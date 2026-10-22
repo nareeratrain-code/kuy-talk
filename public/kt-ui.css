@@ -4,7 +4,7 @@
 .kt-sel:focus{outline:none;border-color:#FFD700;box-shadow:0 0 0 3px rgba(255,215,0,.2)}
 .kt-sel.bad{border-color:#ff4d6d}
 .kt-sel option{background:#1a1724;color:#fff}
-@media (max-width:360px){.kt-dob{grid-template-columns:1fr 1fr;}.kt-dob #dobY{grid-column:1/-1}}
+@media (max-width:520px){.kt-dob{grid-template-columns:.8fr 1.4fr}.kt-dob select:last-child{grid-column:1/-1}}
 /* nav tap animations */
 .nav-icon>span:first-child,nav button b{display:inline-block;will-change:transform}
 .kt-tap>span:first-child,.kt-tap>b{animation:ktTapA .5s cubic-bezier(.3,1.6,.5,1)}
@@ -20,6 +20,6 @@
 @media (prefers-reduced-motion:reduce){.kt-tap>span:first-child,.kt-tap>b,.nav-icon.active>span:first-child,nav button.on b{animation:none!important}.nav-icon:hover>span:first-child{transform:none}}
 /* nearby cards without photo */
 .uc-photo.kt-has-img{background-size:cover!important;background-position:center!important}
-.uc-photo .kt-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));animation:ktEmo 3s ease-in-out infinite}
+.uc-photo .kt-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;z-index:2;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));animation:ktEmo 3s ease-in-out infinite}
 @keyframes ktEmo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @media (prefers-reduced-motion:reduce){.uc-photo .kt-emoji{animation:none}}
