@@ -13,8 +13,9 @@ app.get(['/admin','/admin.html'],adminAuth,(req,res)=>res.sendFile(path.join(__d
 app.use(express.static(path.join(__dirname,'public')));
 // --- db ---
 const DATA_DIR=process.env.DATA_DIR||__dirname;fs.mkdirSync(DATA_DIR,{recursive:true});const DB=path.join(DATA_DIR,'data.json');
-const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[]};
+const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[]};
 let db=Object.assign({},blank,fs.existsSync(DB)?JSON.parse(fs.readFileSync(DB)):{});
+db.visits=db.visits||[];
 let saveT=null;const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>fs.writeFileSync(DB,JSON.stringify(db)),200)};
 const id=()=>crypto.randomBytes(8).toString('hex');
 const FREE_SWIPES=100,DAY=864e5,PREMIUM_DAYS=30;
@@ -34,36 +35,64 @@ const clean=t=>{t=String(t??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[
 const buckets=new Map();const limited=(k,n=6,win=8000)=>{const now=Date.now();const a=(buckets.get(k)||[]).filter(t=>now-t<win);if(a.length>=n){buckets.set(k,a);return true}a.push(now);buckets.set(k,a);return false};
 // --- helpers ---
 const isPrem=u=>!!(u&&u.premiumUntil&&u.premiumUntil>Date.now());
-const pub=u=>u&&({id:u.id,name:u.name,age:u.age,gender:u.gender,bio:u.bio,avatar:u.avatar,bot:!!u.bot,premium:isPrem(u)});
+const ZOD=[['มังกร','♑',120],['กุมภ์','♒',219],['มีน','♓',321],['เมษ','♈',420],['พฤษภ','♉',521],['เมถุน','♊',621],['กรกฎ','♋',723],['สิงห์','♌',823],['กันย์','♍',923],['ตุลย์','♎',1023],['พิจิก','♏',1122],['ธนู','♐',1222],['มังกร','♑',1300]];
+const zodiacOf=dob=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(dob||'');if(!m)return null;const md=+m[2]*100+ +m[3];const z=ZOD.find(z=>md<z[2]);return{name:'ราศี'+z[0],sym:z[1]}};
+const ageOf=dob=>{const d=new Date(dob+'T00:00:00Z');if(isNaN(d))return NaN;const n=new Date();let a=n.getUTCFullYear()-d.getUTCFullYear();if(n.getUTCMonth()<d.getUTCMonth()||(n.getUTCMonth()===d.getUTCMonth()&&n.getUTCDate()<d.getUTCDate()))a--;return a};
+const PROVN=Object.fromEntries(PROVINCES.map(p=>[p.id,p.th]));
+const turboOn=u=>!!(u&&u.turboUntil>Date.now());
+const pub=u=>u&&({id:u.id,name:u.name,age:u.age,gender:u.gender,bio:u.bio,avatar:u.avatar,bot:!!u.bot,premium:isPrem(u)&&!(u.prefs&&u.prefs.showPremium===false),
+ zodiac:zodiacOf(u.dob),province:u.province||null,provinceName:PROVN[u.province]||null,verified:!!u.verified,official:!!u.official,photos:(u.photos||[]).slice(0,4),turbo:turboOn(u),badges:u.badges||[]});
+const completion=u=>{const c=[['name',!!u.name],['dob',!!u.dob],['gender',u.gender!=='x'],['bio',(u.bio||'').length>=10],['avatar',/^data:/.test(u.avatar||'')||(u.photos||[]).length>0],['photos2',(u.photos||[]).length>=2],['province',!!u.province],['verified',!!u.verified]];return{pct:Math.round(c.filter(x=>x[1]).length/c.length*100),missing:c.filter(x=>!x[1]).map(x=>x[0])}};
+const distOf=(a,b)=>{if(a.province&&a.province===b.province){const h=crypto.createHash('md5').update([a.id,b.id].sort().join()).digest()[0];return 1+h%14}const h=crypto.createHash('md5').update([a.id,b.id].sort().join()).digest();return 15+(h[0]*256+h[1])%600};
 const today=()=>new Date().toISOString().slice(0,10);
 const blocked=(a,b)=>db.blocks.some(x=>(x.by===a&&x.target===b)||(x.by===b&&x.target===a));
-const me=u=>({...pub(u),coins:u.coins,premium:isPrem(u),premiumUntil:isPrem(u)?u.premiumUntil:null,unlimited:isPrem(u),swipesUsed:u.swipes,free:FREE_SWIPES,swipesLeft:isPrem(u)?'∞':Math.max(0,FREE_SWIPES-u.swipes),luckyLeft:isPrem(u)?'∞':(u.luckyDate===today()?0:1)});
+const me=u=>({...pub(u),dob:u.dob||null,inventory:u.inventory||{turbo:0,crush:0,compliment:0},turboUntil:turboOn(u)?u.turboUntil:null,refCode:u.refCode,referredBy:!!u.referredBy,filters:u.filters||{},prefs:u.prefs||{},completion:completion(u),verifyStatus:u.verified?'approved':(u.verifyReq&&u.verifyReq.status)||null,premiumIcon:isPrem(u),coins:u.coins,premium:isPrem(u),premiumUntil:isPrem(u)?u.premiumUntil:null,unlimited:isPrem(u),swipesUsed:u.swipes,free:FREE_SWIPES,swipesLeft:isPrem(u)?'∞':Math.max(0,FREE_SWIPES-u.swipes),luckyLeft:isPrem(u)?'∞':(u.luckyDate===today()?0:1)});
 function auth(req,res,next){const u=db.users[req.headers['x-token']];if(!u||u.bot)return res.status(401).json({error:'กรุณาสมัครก่อน'});if(u.banned)return res.status(403).json({error:'บัญชีนี้ถูกระงับ'});
- if(u.swipeDate!==today()){u.swipeDate=today();u.swipes=0;save()}req.u=u;next()}
+ if(u.swipeDate!==today()){u.swipeDate=today();u.swipes=0;save()}if(!u.teamOk){u.teamOk=1;teamWelcome(u);save()}req.u=u;next()}
 const matchOf=(a,b)=>db.matches.find(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
 function makeMatch(a,b){let m=matchOf(a,b);if(m)return m;m={id:id(),a,b,ts:Date.now()};db.matches.push(m);io.to(b).emit('match',{id:m.id,other:pub(db.users[a])});io.to(a).emit('match',{id:m.id,other:pub(db.users[b])});save();return m}
-const others=u=>Object.values(db.users).filter(x=>x.id!==u.id&&!x.banned&&!blocked(u.id,x.id));
+const others=u=>Object.values(db.users).filter(x=>x.id!==u.id&&!x.banned&&!x.official&&!blocked(u.id,x.id));
+const rankT=(a,b)=>(turboOn(b)-turboOn(a));
+const newRef=()=>{let c;do c=crypto.randomBytes(4).toString('hex').slice(0,6).toUpperCase();while(Object.values(db.users).some(u=>u.refCode===c));return c};
+const inv=u=>u.inventory=u.inventory||{turbo:0,crush:0,compliment:0};
+// official team account + migrations
+const TEAM='kuytalk-team';
+if(!db.users[TEAM])db.users[TEAM]={id:TEAM,name:'Kuy Talk Team',age:0,gender:'x',bio:'ทีมงาน Kuy Talk อย่างเป็นทางการ 🍄',avatar:'🍄',bot:true,official:true,verified:true};
+{const pv=['bangkok','chiangmai','khonkaen','phuket','chonburi','bangkok','nonthaburi','songkhla'],bd=['badge-fast','badge-chat'];let i=0;
+ for(const u of Object.values(db.users)){if(u.bot&&!u.official&&!u.province){const y=new Date().getFullYear()-u.age;u.dob=`${y}-${String(1+i*3%12).padStart(2,'0')}-${String(3+i*5%25).padStart(2,'0')}`;u.province=pv[i%pv.length];u.verified=i%2===0;u.badges=i%3===0?['ตอบไว','สายแชท']:i%3===1?['ตอบไว']:['สายแชท'];i++}
+  if(!u.bot&&!u.refCode)u.refCode=newRef()}}
+const WELCOME=['ยินดีต้อนรับสู่ Kuy Talk 🍄 ขอบคุณที่มาร่วมเป็นส่วนหนึ่งของเรา!','เคล็ดลับ: เพิ่มรูปอย่างน้อย 2 รูปและยืนยันตัวตน ✅ จะช่วยให้แมตช์ง่ายขึ้นมาก','ใช้ Crush 💎 กับคนที่ถูกใจเป็นพิเศษ หรือเปิด Turbo ⚡ เพื่อให้คนเห็นโปรไฟล์คุณมากขึ้น 10 เท่า','พบปัญหาหรือเจอผู้ใช้ไม่เหมาะสม พิมพ์บอกทีมงานในแชทนี้ได้เลย หรือกดรายงานในโปรไฟล์ 🙏'];
+function teamWelcome(u){const m=makeMatch(u.id,TEAM);if(!(db.messages[m.id]||[]).length)db.messages[m.id]=WELCOME.map((t,i)=>({from:TEAM,text:t,ts:Date.now()+i}));}
 // --- account ---
-app.post('/api/signup',(req,res)=>{if(limited('signup:'+req.ip,10,60000))return res.status(429).json({error:'สมัครถี่เกินไป'});const {name,age,gender,bio,avatar}=req.body||{};if(!name||!(+age>=18)||+age>120)return res.status(400).json({error:'ต้องกรอกชื่อและอายุ 18+'});
+app.post('/api/signup',(req,res)=>{if(limited('signup:'+req.ip,10,60000))return res.status(429).json({error:'สมัครถี่เกินไป'});let {name,age,gender,bio,avatar,dob,province,ref}=req.body||{};if(dob!=null){if(!/^\d{4}-\d{2}-\d{2}$/.test(dob))return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'});age=ageOf(dob);if(!(age>=18))return res.status(400).json({error:'ต้องมีอายุ 18 ปีขึ้นไป'})}if(!name||!(+age>=18)||+age>120)return res.status(400).json({error:'ต้องกรอกชื่อและอายุ 18+'});
  const av=typeof avatar==='string'&&(avatar.length<16||/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar))&&avatar.length<600000?avatar:'🙂';
- const i=crypto.randomBytes(16).toString('hex');db.users[i]={id:i,name:clean(name).slice(0,30)||'ผู้ใช้',age:+age,gender:['m','f','x'].includes(gender)?gender:'x',bio:clean(bio).slice(0,200),avatar:av,coins:50,swipes:0,swipeDate:today(),created:Date.now()};save();res.json({token:i})});
+ const i=crypto.randomBytes(16).toString('hex');db.users[i]={id:i,name:clean(name).slice(0,30)||'ผู้ใช้',age:+age,gender:['m','f','x'].includes(gender)?gender:'x',bio:clean(bio).slice(0,200),avatar:av,coins:50,swipes:0,swipeDate:today(),created:Date.now(),dob:dob||null,province:PROV.has(province)?province:null,photos:[],inventory:{turbo:0,crush:1,compliment:1},refCode:newRef(),prefs:{showPremium:true,notif:true}};
+ const nu=db.users[i];teamWelcome(nu);let refOk=false;if(ref)refOk=applyRef(nu,String(ref));save();res.json({token:i,refOk})});
+const REF_BONUS=50;
+function applyRef(u,code){code=code.trim().toUpperCase();const r=Object.values(db.users).find(x=>!x.bot&&x.refCode===code);if(!r||r.id===u.id||u.referredBy)return false;u.referredBy=r.id;u.coins+=REF_BONUS;r.coins+=REF_BONUS;io.to(r.id).emit('coins',r.coins);
+ const m=makeMatch(r.id,TEAM);(db.messages[m.id]=db.messages[m.id]||[]).push({from:TEAM,text:`🎉 มีเพื่อนใช้รหัสแนะนำของคุณ! รับ ${REF_BONUS} เหรียญ`,ts:Date.now()});return true}
 app.get('/api/me',auth,(req,res)=>res.json(me(req.u)));
-app.post('/api/profile',auth,(req,res)=>{const u=req.u,{name,bio}=req.body;if(name)u.name=clean(name).slice(0,30);if(bio!=null)u.bio=clean(bio).slice(0,200);save();res.json(me(u))});
+app.post('/api/profile',auth,(req,res)=>{const u=req.u,{name,bio,gender,province,dob,avatar}=req.body;if(name)u.name=clean(name).slice(0,30);if(bio!=null)u.bio=clean(bio).slice(0,200);
+ if(['m','f','x'].includes(gender))u.gender=gender;if(province===''||PROV.has(province))u.province=province||null;
+ if(dob){if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)||!(ageOf(dob)>=18))return res.status(400).json({error:'ต้องมีอายุ 18 ปีขึ้นไป'});u.dob=dob;u.age=ageOf(dob)}
+ if(typeof avatar==='string'&&(avatar.length<16||(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar)&&avatar.length<600000)))u.avatar=avatar;save();res.json(me(u))});
 app.get('/api/config',(req,res)=>res.json({packs:PACKS,prices:PRICES,free:FREE_SWIPES,premiumDays:PREMIUM_DAYS,provinces:PROVINCES}));
 app.get('/api/user/:id',auth,(req,res)=>{const t=db.users[req.params.id];if(!t||blocked(req.u.id,t.id))return res.status(404).json({error:'ไม่พบ'});res.json(pub(t))});
 // --- swipe / match ---
-app.get('/api/cards',auth,(req,res)=>{const seen=new Set(db.likes.filter(l=>l.from===req.u.id).map(l=>l.to));res.json(others(req.u).filter(u=>!seen.has(u.id)).map(pub))});
-app.get('/api/people',auth,(req,res)=>{const u=req.u;res.json(others(u).map(x=>{const m=matchOf(u.id,x.id);return{...pub(x),liked:db.likes.some(l=>l.from===u.id&&l.to===x.id&&l.like),mid:m&&m.id}}))});
+const passF=(u,x)=>{const f=u.filters||{};if(f.gender&&x.gender!==f.gender)return false;if(f.ageMin&&x.age<f.ageMin)return false;if(f.ageMax&&x.age>f.ageMax)return false;if(f.province&&x.province!==f.province)return false;if(f.maxDist&&distOf(u,x)>f.maxDist)return false;return true};
+app.get('/api/cards',auth,(req,res)=>{const u=req.u,seen=new Set(db.likes.filter(l=>l.from===u.id).map(l=>l.to));res.json(others(u).filter(x=>!seen.has(x.id)&&(req.query.all||passF(u,x))).sort(rankT).map(x=>({...pub(x),dist:distOf(u,x),online:x.bot||isOnline(x.id)})))});
+app.get('/api/people',auth,(req,res)=>{const u=req.u;res.json(others(u).sort(rankT).map(x=>{const m=matchOf(u.id,x.id);return{...pub(x),dist:distOf(u,x),online:x.bot||isOnline(x.id),liked:db.likes.some(l=>l.from===u.id&&l.to===x.id&&l.like),mid:m&&m.id}}))});
 app.post('/api/swipe',auth,(req,res)=>{const u=req.u,{to,dir,superlike}=req.body,t=db.users[to];if(!t||t.id===u.id||blocked(u.id,to))return res.status(404).json({error:'ไม่พบ'});
  if(!isPrem(u)&&u.swipes>=FREE_SWIPES)return res.status(402).json({error:`กดหัวใจ/ปัดฟรีครบ ${FREE_SWIPES} ครั้งวันนี้แล้ว`});
- if(superlike){if(u.coins<PRICES.superlike)return res.status(402).json({error:'เหรียญไม่พอ'});u.coins-=PRICES.superlike}
- u.swipes++;db.likes=db.likes.filter(l=>!(l.from===u.id&&l.to===to));const like=dir==='right'||!!superlike;db.likes.push({from:u.id,to,like,superlike:!!superlike,ts:Date.now()});let match=null;
+ if(superlike&&!useItem(u,'crush'))return res.status(402).json({error:'ไม่มี Crush 💎 เหลือ — ซื้อเพิ่มได้ที่หน้า ฉัน'});
+ u.swipes++;db.likes=db.likes.filter(l=>!(l.from===u.id&&l.to===to));const like=dir==='right'||!!superlike;db.likes.push({from:u.id,to,like,superlike:!!superlike,ts:Date.now(),prevMatch:!!matchOf(u.id,to)});u.lastSwipe={to,ts:Date.now()};if(superlike)io.to(to).emit('crush',{from:pub(u)});let match=null;
  if(like){const back=t.bot?(superlike||Math.random()<0.7):db.likes.some(l=>l.from===to&&l.to===u.id&&l.like);
   if(t.bot&&back)db.likes.push({from:to,to:u.id,like:true,ts:Date.now()});
   if(back)match=makeMatch(u.id,to)}
  save();res.json({match:match&&{id:match.id,other:pub(t)},me:me(u)})});
 app.get('/api/matches',auth,(req,res)=>res.json(db.matches.filter(m=>(m.a===req.u.id||m.b===req.u.id)).map(m=>({m,o:db.users[m.a===req.u.id?m.b:m.a]})).filter(x=>x.o&&!x.o.banned&&!blocked(req.u.id,x.o.id)).map(({m,o})=>({id:m.id,other:pub(o),last:(db.messages[m.id]||[]).slice(-1)[0]}))));
-app.get('/api/messages/:mid',auth,(req,res)=>{const m=db.matches.find(x=>x.id===req.params.mid);if(!m||(m.a!==req.u.id&&m.b!==req.u.id))return res.status(404).end();res.json(db.messages[m.id]||[])});
+app.get('/api/messages/:mid',auth,(req,res)=>{const m=db.matches.find(x=>x.id===req.params.mid);if(!m||(m.a!==req.u.id&&m.b!==req.u.id))return res.status(404).end();const cl=(m.cleared||{})[req.u.id]||0;res.json((db.messages[m.id]||[]).filter(x=>x.ts>cl))});
+app.post('/api/chat/clear',auth,(req,res)=>{const m=db.matches.find(x=>x.id===req.body.mid);if(!m||(m.a!==req.u.id&&m.b!==req.u.id))return res.status(404).end();(m.cleared=m.cleared||{})[req.u.id]=Date.now();save();res.json({ok:true})});
 app.post('/api/likes-me',auth,(req,res)=>{const u=req.u;if(!isPrem(u)){if(u.coins<PRICES.likesme)return res.status(402).json({error:'เหรียญไม่พอ'});u.coins-=PRICES.likesme;save()}
  const mine=new Set(db.likes.filter(l=>l.from===u.id).map(l=>l.to));res.json({me:me(u),list:db.likes.filter(l=>l.to===u.id&&l.like&&!mine.has(l.from)&&db.users[l.from]&&!blocked(u.id,l.from)).map(l=>({...pub(db.users[l.from]),superlike:l.superlike}))})});
 // lucky (1 free/day, premium unlimited) & shake: pair with a random non-matched profile
@@ -100,9 +129,57 @@ app.post('/api/friends/request',auth,(req,res)=>{const u=req.u,t=db.users[req.bo
  if(t.bot)f.status='accepted';save();io.to(t.id).emit('friend',{from:pub(u),status:f.status});res.json({status:f.status})});
 app.post('/api/friends/respond',auth,(req,res)=>{const f=db.friends.find(f=>f.a===req.body.id&&f.b===req.u.id&&f.status==='pending');if(!f)return res.status(404).end();if(req.body.accept)f.status='accepted';else db.friends.splice(db.friends.indexOf(f),1);save();io.to(f.a).emit('friend',{from:pub(req.u),status:req.body.accept?'accepted':'declined'});res.json({ok:true})});
 app.post('/api/friends/remove',auth,(req,res)=>{db.friends=db.friends.filter(f=>!((f.a===req.u.id&&f.b===req.body.id)||(f.b===req.u.id&&f.a===req.body.id)));save();res.json({ok:true})});
+
+// --- Omi-style systems ---
+const SHOP={turbo:{coins:60,label:'Turbo ⚡'},crush:{coins:20,label:'Crush 💎'},compliment:{coins:15,label:'คำชมเชย 💬'}};
+const TURBO_MIN=30;
+const month=()=>today().slice(0,7);
+// consume one item; Premium gets daily free crush/compliment and monthly free turbo
+function useItem(u,k){const I=inv(u);if(isPrem(u)){if(k==='turbo'&&u.freeTurbo!==month()){u.freeTurbo=month();return true}if(k!=='turbo'&&(u.freeItem||{})[k]!==today()){u.freeItem={...(u.freeItem||{}),[k]:today()};return true}}
+ if(I[k]>0){I[k]--;return true}return false}
+app.get('/api/shop',auth,(req,res)=>res.json({items:SHOP,turboMinutes:TURBO_MIN,me:me(req.u)}));
+app.post('/api/shop/buy',auth,(req,res)=>{const u=req.u,k=req.body.item,q=[1,5].includes(+req.body.qty)?+req.body.qty:1,it=SHOP[k];if(!it)return res.status(400).json({error:'ไม่มีสินค้านี้'});
+ const cost=Math.round(it.coins*q*(q===5?0.8:1));if(u.coins<cost)return res.status(402).json({error:'เหรียญไม่พอ'});u.coins-=cost;inv(u)[k]+=q;save();res.json(me(u))});
+app.post('/api/turbo',auth,(req,res)=>{const u=req.u;if(turboOn(u))return res.status(400).json({error:'Turbo กำลังทำงานอยู่'});if(!useItem(u,'turbo'))return res.status(402).json({error:'ไม่มี Turbo ⚡ เหลือ'});u.turboUntil=Date.now()+TURBO_MIN*60000;save();res.json(me(u))});
+app.post('/api/undo',auth,(req,res)=>{const u=req.u;if(!isPrem(u))return res.status(402).json({error:'ย้อนการปัดเป็นสิทธิ์ Premium 👑'});
+ const L=db.likes.filter(l=>l.from===u.id).sort((a,b)=>b.ts-a.ts)[0];if(!L||Date.now()-L.ts>36e5)return res.status(404).json({error:'ไม่มีการปัดให้ย้อน'});
+ db.likes.splice(db.likes.indexOf(L),1);const m=matchOf(u.id,L.to);if(m&&!L.prevMatch&&!(db.messages[m.id]||[]).some(x=>x.from===u.id)){db.matches.splice(db.matches.indexOf(m),1);delete db.messages[m.id];db.likes=db.likes.filter(l=>!(l.from===L.to&&l.to===u.id&&db.users[L.to]?.bot))}
+ u.swipes=Math.max(0,u.swipes-1);save();res.json({user:{...pub(db.users[L.to]),dist:distOf(u,db.users[L.to])},me:me(u)})});
+app.post('/api/compliment',auth,(req,res)=>{const u=req.u,t=db.users[req.body.to],text=clean(req.body.text).slice(0,200);if(!t||t.id===u.id||t.official||blocked(u.id,t.id))return res.status(404).json({error:'ไม่พบ'});if(!text)return res.status(400).json({error:'เขียนคำชมก่อนนะ'});
+ if(!useItem(u,'compliment'))return res.status(402).json({error:'ไม่มีคำชมเชย 💬 เหลือ'});db.likes=db.likes.filter(l=>!(l.from===u.id&&l.to===t.id));db.likes.push({from:u.id,to:t.id,like:true,compliment:text,ts:Date.now()});
+ let match=null;const back=t.bot?true:db.likes.some(l=>l.from===t.id&&l.to===u.id&&l.like);if(back){if(t.bot)db.likes.push({from:t.id,to:u.id,like:true,ts:Date.now()});match=makeMatch(u.id,t.id);(db.messages[match.id]=db.messages[match.id]||[]).push({from:u.id,text:'💬 '+text,ts:Date.now()});
+  if(t.bot)setTimeout(()=>{if(!db.messages[match.id])return;const r={id:id(),from:t.id,text:'ขอบคุณสำหรับคำชมนะ 🥰',ts:Date.now()};db.messages[match.id].push(r);save();io.to(u.id).emit('msg',{mid:match.id,...r})},1500)}
+ io.to(t.id).emit('compliment',{from:pub(u),text});save();res.json({match:match&&{id:match.id,other:pub(t)},me:me(u)})});
+const blurOut=(x,extra)=>({blur:true,online:x.bot||isOnline(x.id),...extra});
+app.get('/api/likes/received',auth,(req,res)=>{const u=req.u,P=isPrem(u),mine=new Set(db.likes.filter(l=>l.from===u.id).map(l=>l.to));
+ const L=db.likes.filter(l=>l.to===u.id&&l.like&&!mine.has(l.from)&&db.users[l.from]&&!db.users[l.from].banned&&!blocked(u.id,l.from)).sort((a,b)=>b.ts-a.ts);const seenAt=u.likesSeenAt||0;
+ const list=L.map(l=>{const x=db.users[l.from],e={superlike:!!l.superlike,compliment:l.compliment?(P?l.compliment:true):null,isNew:l.ts>seenAt,ts:l.ts};return P?{...pub(x),dist:distOf(u,x),online:x.bot||isOnline(x.id),...e}:blurOut(x,e)});
+ if(req.query.seen){u.likesSeenAt=Date.now();save()}res.json({premium:P,count:L.length,newCount:L.filter(l=>l.ts>seenAt).length,list})});
+app.get('/api/likes/given',auth,(req,res)=>{const u=req.u;res.json(db.likes.filter(l=>l.from===u.id&&l.like&&db.users[l.to]&&!matchOf(u.id,l.to)&&!blocked(u.id,l.to)).sort((a,b)=>b.ts-a.ts).map(l=>({...pub(db.users[l.to]),superlike:!!l.superlike,compliment:!!l.compliment,ts:l.ts})))});
+app.post('/api/visit',auth,(req,res)=>{const u=req.u,t=db.users[req.body.id];if(!t||t.id===u.id)return res.json({ok:false});const last=db.visits.filter(v=>v.by===u.id&&v.target===t.id).pop();
+ if(!last||Date.now()-last.ts>5*60000){db.visits.push({by:u.id,target:t.id,ts:Date.now()});if(db.visits.length>20000)db.visits.splice(0,5000);io.to(t.id).emit('visit',{});save()}res.json({ok:true})});
+app.get('/api/visitors',auth,(req,res)=>{const u=req.u,P=isPrem(u),V=db.visits.filter(v=>v.target===u.id&&db.users[v.by]&&!blocked(u.id,v.by));const by={};for(const v of V){(by[v.by]=by[v.by]||{n:0,ts:0}).n++;by[v.by].ts=Math.max(by[v.by].ts,v.ts)}
+ const ids=Object.keys(by).sort((a,b)=>by[b].ts-by[a].ts);const isF=x=>{const f=fr(u.id,x);return f&&f.status==='accepted'};
+ res.json({premium:P,stats:{total:ids.length,visits:V.length,repeat:ids.filter(i=>by[i].n>1).length,friends:ids.filter(isF).length},list:ids.map(i=>{const x=db.users[i],e={count:by[i].n,ts:by[i].ts,friend:!!isF(i)};return P?{...pub(x),...e}:blurOut(x,e)})})});
+app.get('/api/me/stats',auth,(req,res)=>{const u=req.u.id;res.json({likesReceived:db.likes.filter(l=>l.to===u&&l.like).length,likesGiven:db.likes.filter(l=>l.from===u&&l.like).length,visitors:new Set(db.visits.filter(v=>v.target===u).map(v=>v.by)).size,
+ picks:db.likes.filter(l=>l.to===u&&(l.superlike||l.compliment)).length,matches:db.matches.filter(m=>(m.a===u||m.b===u)&&m.b!==TEAM&&m.a!==TEAM).length})});
+app.post('/api/unmatch',auth,(req,res)=>{const u=req.u,m=db.matches.find(x=>x.id===req.body.mid);if(!m||(m.a!==u.id&&m.b!==u.id))return res.status(404).json({error:'ไม่พบ'});const o=m.a===u.id?m.b:m.a;if(o===TEAM)return res.status(400).json({error:'ยกเลิกแมตช์กับทีมงานไม่ได้'});
+ if(!isPrem(u))return res.status(402).json({error:'ยกเลิกแมตช์เป็นสิทธิ์ Premium 👑'});
+ db.matches.splice(db.matches.indexOf(m),1);delete db.messages[m.id];db.likes=db.likes.filter(l=>!((l.from===u.id&&l.to===o)||(l.from===o&&l.to===u.id)));db.friends=db.friends.filter(f=>!((f.a===u.id&&f.b===o)||(f.a===o&&f.b===u.id)));io.to(o).emit('unmatch',{mid:m.id});save();res.json({ok:true})});
+app.get('/api/read/:mid',auth,(req,res)=>{const u=req.u,m=db.matches.find(x=>x.id===req.params.mid);if(!m||(m.a!==u.id&&m.b!==u.id))return res.status(404).end();if(!isPrem(u))return res.json({premium:false,peerReadAt:null});const o=m.a===u.id?m.b:m.a;res.json({premium:true,peerReadAt:(m.read||{})[o]||null})});
+app.post('/api/filters',auth,(req,res)=>{const b=req.body||{},n=(v,lo,hi)=>{v=parseInt(v);return v>=lo&&v<=hi?v:null};const f={gender:['m','f'].includes(b.gender)?b.gender:'',ageMin:n(b.ageMin,18,99),ageMax:n(b.ageMax,18,99),province:PROV.has(b.province)?b.province:'',maxDist:n(b.maxDist,1,1000)};
+ if(f.ageMin&&f.ageMax&&f.ageMin>f.ageMax)[f.ageMin,f.ageMax]=[f.ageMax,f.ageMin];req.u.filters=f;save();res.json(me(req.u))});
+app.post('/api/prefs',auth,(req,res)=>{const p=req.u.prefs=req.u.prefs||{};for(const k of ['showPremium','notif','notifMsg','notifLike','hideAge','sms'])if(typeof req.body[k]==='boolean')p[k]=req.body[k];if(['th','en'].includes(req.body.lang))p.lang=req.body.lang;save();res.json(me(req.u))});
+app.post('/api/referral',auth,(req,res)=>{if(limited('ref:'+req.u.id,5,60000))return res.status(429).json({error:'ลองถี่เกินไป'});if(req.u.referredBy)return res.status(400).json({error:'คุณใช้รหัสแนะนำไปแล้ว'});if(!applyRef(req.u,String(req.body.code||'')))return res.status(400).json({error:'รหัสไม่ถูกต้อง'});save();res.json(me(req.u))});
+const IMG=x=>typeof x==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)&&x.length<600000;
+app.post('/api/photos',auth,(req,res)=>{const u=req.u;u.photos=u.photos||[];if(!IMG(req.body.photo))return res.status(400).json({error:'รูปไม่ถูกต้องหรือใหญ่เกินไป'});if(u.photos.length>=4)return res.status(400).json({error:'ใส่รูปได้สูงสุด 4 รูป'});u.photos.push(req.body.photo);if(!/^data:/.test(u.avatar||''))u.avatar=req.body.photo;save();res.json(me(u))});
+app.delete('/api/photos/:i',auth,(req,res)=>{const u=req.u;(u.photos||[]).splice(+req.params.i,1);save();res.json(me(u))});
+app.post('/api/verify',auth,(req,res)=>{const u=req.u;if(u.verified)return res.status(400).json({error:'ยืนยันแล้ว'});if(!IMG(req.body.selfie))return res.status(400).json({error:'กรุณาถ่ายเซลฟี่'});u.verifyReq={photo:req.body.selfie,ts:Date.now(),status:'pending'};save();res.json(me(u))});
+app.post('/api/account/delete',auth,(req,res)=>{const u=req.u.id;delete db.users[u];db.likes=db.likes.filter(l=>l.from!==u&&l.to!==u);const ms=db.matches.filter(m=>m.a===u||m.b===u);ms.forEach(m=>delete db.messages[m.id]);db.matches=db.matches.filter(m=>!ms.includes(m));db.friends=db.friends.filter(f=>f.a!==u&&f.b!==u);db.moments=db.moments.filter(m=>m.uid!==u);db.visits=db.visits.filter(v=>v.by!==u&&v.target!==u);io.in(u).disconnectSockets(true);save();res.json({ok:true})});
+app.post('/api/admin/verify',adminAuth,(req,res)=>{const u=db.users[req.body.id];if(!u||!u.verifyReq)return res.status(404).end();u.verifyReq.status=req.body.approve?'approved':'rejected';u.verified=!!req.body.approve;const m=makeMatch(u.id,TEAM);(db.messages[m.id]=db.messages[m.id]||[]).push({from:TEAM,text:req.body.approve?'✅ ยืนยันตัวตนสำเร็จ! โปรไฟล์ของคุณมีเครื่องหมายยืนยันแล้ว':'❌ คำขอยืนยันตัวตนไม่ผ่าน กรุณาถ่ายเซลฟี่ใหม่ให้เห็นหน้าชัดเจน',ts:Date.now()});u.verifyReq.photo=null;save();res.json({ok:true})});
 // --- admin api ---
 app.get('/api/admin/overview',adminAuth,(req,res)=>{const U=Object.values(db.users).filter(u=>!u.bot);res.json({users:U.map(u=>({...pub(u),banned:!!u.banned,coins:u.coins,created:u.created,online:isOnline(u.id),reportsAgainst:db.reports.filter(r=>r.target===u.id).length})),
- reports:db.reports.slice().reverse().map(r=>({...r,byName:db.users[r.by]?.name,targetName:db.users[r.target]?.name})),stats:{users:U.length,online:U.filter(u=>isOnline(u.id)).length,matches:db.matches.length,moments:db.moments.length,pending:db.reports.filter(r=>r.status==='pending').length}})});
+ reports:db.reports.slice().reverse().map(r=>({...r,byName:db.users[r.by]?.name,targetName:db.users[r.target]?.name})),stats:{users:U.length,online:U.filter(u=>isOnline(u.id)).length,matches:db.matches.length,moments:db.moments.length,pending:db.reports.filter(r=>r.status==='pending').length},verifies:Object.values(db.users).filter(u=>u.verifyReq&&u.verifyReq.status==='pending').map(u=>({id:u.id,name:u.name,avatar:u.avatar,photo:u.verifyReq.photo,ts:u.verifyReq.ts}))})});
 app.post('/api/admin/ban',adminAuth,(req,res)=>{const u=db.users[req.body.id];if(!u||u.bot)return res.status(404).end();u.banned=!!req.body.banned;save();if(u.banned)io.in(u.id).disconnectSockets(true);res.json({ok:true})});
 app.post('/api/admin/report',adminAuth,(req,res)=>{const r=db.reports.find(x=>x.id===req.body.id);if(!r)return res.status(404).end();r.status=['pending','resolved','dismissed'].includes(req.body.status)?req.body.status:'resolved';save();res.json({ok:true})});
 // --- sockets ---
@@ -115,12 +192,17 @@ let countT=null;const pushCounts=()=>{clearTimeout(countT);countT=setTimeout(()=
 function roomPost(pid,u,text,isBot){const msg={id:id(),uid:u.id,name:u.name,avatar:u.avatar,bot:!!isBot,text,ts:Date.now()};const r=db.rooms[pid]=db.rooms[pid]||[];r.push(msg);if(r.length>100)r.splice(0,r.length-100);save();
  for(const sid of io.sockets.adapter.rooms.get('room:'+pid)||[]){const s=io.sockets.sockets.get(sid);if(s&&!blocked(s.uid,u.id))s.emit('room:msg',{room:pid,...msg})}}
 // bots chat in popular rooms that have humans
-setInterval(()=>{const live=HOT.filter(p=>io.sockets.adapter.rooms.get('room:'+p)?.size);if(!live.length)return;const p=pick(live);const b=pick(Object.values(db.users).filter(u=>u.bot));roomPost(p,b,pick(ROOM_BOT),true)},Number(process.env.ROOM_BOT_MS||25000));
+setInterval(()=>{const live=HOT.filter(p=>io.sockets.adapter.rooms.get('room:'+p)?.size);if(!live.length)return;const p=pick(live);const b=pick(Object.values(db.users).filter(u=>u.bot&&!u.official));roomPost(p,b,pick(ROOM_BOT),true)},Number(process.env.ROOM_BOT_MS||25000));
 io.on('connection',s=>{const u=db.users[s.handshake.auth.token];if(!u||u.bot||u.banned)return s.disconnect();s.uid=u.id;s.join(u.id);online.set(u.id,(online.get(u.id)||0)+1);s.emit('room:counts',counts());
  const flood=(k,n,w)=>{if(limited(k+':'+u.id,n,w)){s.emit('err','ส่งข้อความเร็วเกินไป กรุณารอสักครู่ ⏳');return true}return false};
- s.on('msg',({mid,text}={})=>{if(flood('msg',8,8000))return;const m=db.matches.find(x=>x.id===mid);text=clean(text);if(!m||(m.a!==u.id&&m.b!==u.id)||!text)return;const o=m.a===u.id?m.b:m.a;if(blocked(u.id,o))return s.emit('err','ไม่สามารถส่งข้อความถึงผู้ใช้นี้ได้');
-  const msg={from:u.id,text,ts:Date.now()};(db.messages[mid]=db.messages[mid]||[]).push(msg);save();io.to(u.id).to(o).emit('msg',{mid,...msg});
-  if(db.users[o].bot){io.to(u.id).emit('typing',{mid});setTimeout(()=>{const r={from:o,text:pick(REPLIES),ts:Date.now()};db.messages[mid].push(r);save();io.to(u.id).emit('msg',{mid,...r})},1200+Math.random()*1500)}});
+ s.on('msg',({mid,text,photo,loc}={})=>{if(flood('msg',8,8000))return;const m=db.matches.find(x=>x.id===mid);text=clean(text);
+  let extra=null;if(photo){if(!IMG(photo))return s.emit('err','รูปใหญ่เกินไปหรือไม่ถูกต้อง');extra={type:'photo',photo};text=text||'📷 รูปภาพ'}
+  else if(loc){const lat=+loc.lat,lng=+loc.lng;if(!(lat>=-90&&lat<=90&&lng>=-180&&lng<=180))return;extra={type:'loc',lat:Math.round(lat*1e5)/1e5,lng:Math.round(lng*1e5)/1e5};text='📍 ตำแหน่ง'}
+  if(!m||(m.a!==u.id&&m.b!==u.id)||!text)return;const o=m.a===u.id?m.b:m.a;if(blocked(u.id,o))return s.emit('err','ไม่สามารถส่งข้อความถึงผู้ใช้นี้ได้');
+  const msg={id:id(),from:u.id,text,ts:Date.now(),...(extra||{})};(db.messages[mid]=db.messages[mid]||[]).push(msg);save();io.to(u.id).to(o).emit('msg',{mid,...msg});
+  if(db.users[o].bot){io.to(u.id).emit('typing',{mid});setTimeout(()=>{if(!db.messages[mid]||!db.matches.includes(m))return;m.read=m.read||{};m.read[o]=Date.now();if(isPrem(u))io.to(u.id).emit('read',{mid,ts:m.read[o]});const st=/^\[\[sticker:\w+\]\]$/.test(text);const r={id:id(),from:o,text:db.users[o].official?'ขอบคุณที่ติดต่อทีมงาน Kuy Talk 🍄 เราได้รับข้อความแล้ว และจะตอบกลับโดยเร็ว (นี่คือข้อความอัตโนมัติ)':st?'[[sticker:'+pick(['love','haha','hi','wow'])+']]':pick(REPLIES),ts:Date.now()};db.messages[mid].push(r);save();io.to(u.id).emit('msg',{mid,...r})},1200+Math.random()*1500)}});
+ s.on('unsend',({mid,id:x}={})=>{const m=db.matches.find(y=>y.id===mid);if(!m||(m.a!==u.id&&m.b!==u.id))return;const g=(db.messages[mid]||[]).find(y=>y.id===x&&y.from===u.id);if(!g)return;Object.assign(g,{deleted:true,text:'',photo:null,lat:null,lng:null,type:null});save();io.to(m.a).to(m.b).emit('unsend',{mid,id:x})});
+ s.on('read',({mid}={})=>{const m=db.matches.find(x=>x.id===mid);if(!m||(m.a!==u.id&&m.b!==u.id))return;m.read=m.read||{};m.read[u.id]=Date.now();const o=m.a===u.id?m.b:m.a;if(isPrem(db.users[o]))io.to(o).emit('read',{mid,ts:m.read[u.id]});save()});
  s.on('typing',({mid}={})=>{const m=db.matches.find(x=>x.id===mid);if(!m||(m.a!==u.id&&m.b!==u.id)||limited('ty:'+u.id,4,3000))return;const o=m.a===u.id?m.b:m.a;if(!blocked(u.id,o))io.to(o).emit('typing',{mid})});
  // random chat
  const leave=()=>{queue=queue.filter(q=>q.s!==s);const r=rand[s.id];if(r){clearTimeout(r.t);delete rand[s.id];if(r.peer){delete rand[r.peer.id];r.peer.emit('rand:ended')}}};
@@ -128,7 +210,7 @@ io.on('connection',s=>{const u=db.users[s.handshake.auth.token];if(!u||u.bot||u.
   const ok=(a,b,f)=>!f||b.gender===f;
   const i=queue.findIndex(q=>ok(u,q.u,filter)&&ok(q.u,u,q.filter)&&!blocked(u.id,q.u.id)&&q.u.id!==u.id);
   if(i>=0){const q=queue.splice(i,1)[0];clearTimeout(q.t);rand[s.id]={peer:q.s};rand[q.s.id]={peer:s};s.emit('rand:paired',pub(q.u));q.s.emit('rand:paired',pub(u));return}
-  const entry={s,u,filter};entry.t=setTimeout(()=>{queue=queue.filter(q=>q!==entry);const bots=Object.values(db.users).filter(b=>b.bot&&(!filter||b.gender===filter)&&!blocked(u.id,b.id));const b=pick(bots);if(!b)return s.emit('err','ไม่พบคู่สนทนา');rand[s.id]={bot:b};s.emit('rand:paired',pub(b));setTimeout(()=>rand[s.id]?.bot===b&&s.emit('rand:msg',{text:'หวัดดี 👋 '+pick(REPLIES)}),1000)},4000);queue.push(entry);s.emit('rand:waiting')});
+  const entry={s,u,filter};entry.t=setTimeout(()=>{queue=queue.filter(q=>q!==entry);const bots=Object.values(db.users).filter(b=>b.bot&&!b.official&&(!filter||b.gender===filter)&&!blocked(u.id,b.id));const b=pick(bots);if(!b)return s.emit('err','ไม่พบคู่สนทนา');rand[s.id]={bot:b};s.emit('rand:paired',pub(b));setTimeout(()=>rand[s.id]?.bot===b&&s.emit('rand:msg',{text:'หวัดดี 👋 '+pick(REPLIES)}),1000)},4000);queue.push(entry);s.emit('rand:waiting')});
  s.on('rand:msg',text=>{if(flood('rm',8,8000))return;const r=rand[s.id];text=clean(text);if(!r||!text)return;if(r.peer)r.peer.emit('rand:msg',{text});else{const b=r.bot;setTimeout(()=>rand[s.id]?.bot===b&&s.emit('rand:msg',{text:pick(REPLIES)}),1000+Math.random()*1500)}});
  s.on('rand:leave',leave);
  // province rooms

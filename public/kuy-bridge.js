@@ -20,14 +20,18 @@ function updateLikeBar(){if(!ME)return;const used=ME.swipesUsed||0,f=ME.free;con
 async function refresh(){ME=await api('me');remember(ME);updateLikeBar()}
 async function ensureAccount(age){if(T){try{await refresh();return}catch(e){if(String(e).includes('ระงับ')){showToast('บัญชีนี้ถูกระงับ');throw e}}}
  const nm=($('epName')||{}).value;const name=(nm&&nm!=='Demo User'?nm:'ผู้ใช้'+Math.floor(1000+Math.random()*9000));
- const r=await api('signup',{name,age:age||20,gender:'x',bio:'สวัสดี! มาจาก Kuy Talk',avatar:'😎'});T=localStorage.kt_token=r.token;await refresh()}
+ const dob=($('dobInput')||{}).value||undefined;const r=await api('signup',{name,dob,ref:localStorage.kt_ref||undefined,age:age||20,gender:'x',bio:'สวัสดี! มาจาก Kuy Talk',avatar:'😎'});T=localStorage.kt_token=r.token;if(r.refOk)setTimeout(()=>showToast('🎁 ใช้รหัสแนะนำสำเร็จ รับ 50 เหรียญ!'),1500);localStorage.removeItem('kt_ref');await refresh()}
+const STK={hi:['🍄👋','หวัดดี'],love:['🍄💕','รักเลย'],haha:['🍄😂','ฮ่าๆ'],wow:['🍄😮','ว้าว'],sad:['🍄🥺','งอแง'],ok:['🍄👌','โอเค'],night:['🍄🌙','ฝันดี'],eat:['🍄🍜','กินยัง']};
+const fmt=t=>{const m=/^\[\[sticker:(\w+)\]\]$/.exec(t||'');if(m&&STK[m[1]])return `<span class="kt-stk" data-stk="${m[1]}"><span class="kt-stk-e">${STK[m[1]][0]}</span><span class="kt-stk-t">${STK[m[1]][1]}</span></span>`;return esc(t)};
+const fmtM=x=>x.deleted?'<i class="ko-del">🚫 ข้อความนี้ถูกยกเลิก</i>':x.type==='photo'&&/^data:image\//.test(x.photo||'')?`<img class="ko-mimg" src="${x.photo}" alt="รูป" onclick="koViewImg(this.src)">`:x.type==='loc'?(window.koLocCard?koLocCard(x.lat,x.lng):'📍'):fmt(x.text);
+const pv=t=>/^\[\[sticker:/.test(t||'')?'[สติกเกอร์]':esc(t);
 // ---------- chats / nearby ----------
-async function loadChats(){const L=await api('matches');Object.keys(chats).forEach(k=>delete chats[k]);
- for(const m of L){const o=remember(m.other);const msgs=(await api('messages/'+m.id)).map(x=>({from:x.from===ME.id?'me':'them',text:esc(x.text),time:tm(x.ts)}));
-  chats[m.id]={uid:o.id,name:esc(o.name)+(o.bot?' 🤖':''),rawName:o.name,avatar:letter(o),grad:gr(o.id),online:true,time:msgs.length?msgs[msgs.length-1].time:'',preview:msgs.length?msgs[msgs.length-1].text:'แมตช์แล้ว! ทักเลย 💕',unread:0,msgs}}
- buildChatList();if(currentChat&&!chats[currentChat]){currentChat=null;$('activeChatView').style.display='none';$('emptyChatMsg').style.display=''}}
+async function loadChats(){const L=(await api('matches')).sort((a,b)=>(b.other.official?1:0)-(a.other.official?1:0));const NEW={};
+ for(const m of L){const o=remember(m.other);const msgs=(await api('messages/'+m.id)).map(x=>({from:x.from===ME.id?'me':'them',text:fmtM(x),raw:x.text,id:x.id,ts:x.ts,time:tm(x.ts)}));
+  NEW[m.id]={uid:o.id,official:!!o.official,verified:!!o.verified,name:esc(o.name)+(o.official?' <span class="kt-vb kt-off" title="บัญชีทางการ">✔</span>':o.verified?' <span class="kt-vb" title="ยืนยันตัวตนแล้ว">✔</span>':'')+(o.bot&&!o.official?' 🤖':''),rawName:o.name,avatar:letter(o),grad:gr(o.id),online:true,time:msgs.length?msgs[msgs.length-1].time:'',preview:msgs.length?pv(msgs[msgs.length-1].raw):'แมตช์แล้ว! ทักเลย 💕',unread:0,msgs}}
+ Object.keys(chats).forEach(k=>{if(!NEW[k])delete chats[k]});for(const k in NEW){const o=chats[k];if(o&&o.peerRead)NEW[k].peerRead=o.peerRead;chats[k]=NEW[k]}buildChatList();if(currentChat&&!chats[currentChat]){currentChat=null;$('activeChatView').style.display='none';$('emptyChatMsg').style.display=''}}
 async function loadPeople(){const L=await api('people');nearbyUsers.length=0;
- L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:((parseInt(u.id.slice(0,3),16)%150)/10+0.5).toFixed(1),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.bot?'🤖 Bot':u.premium?'👑 Premium':null,badgeColor:'rgba(124,58,237,.8)',avatar:u.avatar,tags:[],about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
+ L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:u.dist!=null?u.dist:((parseInt(u.id.slice(0,3),16)%150)/10+0.5).toFixed(1),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.turbo?'⚡ Turbo':u.verified?'✔ ยืนยันแล้ว':u.premium?'👑 Premium':u.bot?'🤖 Bot':null,badgeColor:'rgba(124,58,237,.8)',avatar:u.avatar,tags:[u.zodiac&&u.zodiac.sym+' '+u.zodiac.name,u.provinceName&&'📍 '+u.provinceName,...(u.badges||[])].filter(Boolean).map(esc),about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
  if(!ME.premium&&nearbyUsers.length>3)nearbyUsers.splice(3,0,{id:'locked1',name:'???',age:'?',dist:'1.8',bio:'ใกล้มาก!',grad:'linear-gradient(135deg,#374151,#1f2937)',letter:'?',locked:true});
  // lucky/shake pools are filled per-spin from the server
  buildNearbyGrid()}
@@ -39,10 +43,10 @@ function openChatUid(uid){const mid=midOf(uid);if(mid){openChat(mid);switchPage(
 window.ktOpenChatUid=openChatUid;
 async function loadAll(){await Promise.all([loadChats(),loadPeople(),loadMoments(),loadFriends(),loadBlocks()])}
 // ---------- socket ----------
-function connect(){sock=io({auth:{token:T}});KTCall.init(sock);
+function connect(){sock=io({auth:{token:T}});KTCall.init(sock);dispatchEvent(new CustomEvent('kt:sock',{detail:sock}));
  sock.on('connect',()=>{if(currentRoom)sock.emit('room:join',currentRoom)});
- sock.on('msg',m=>{const c=chats[m.mid];if(!c){loadChats();return}if(m.from===ME.id)return;$('typingRow')?.remove();
-  c.msgs.push({from:'them',text:esc(m.text),time:tm(m.ts)});c.preview=esc(m.text);c.time=tm(m.ts);
+ sock.on('msg',m=>{const c=chats[m.mid];if(!c){loadChats();return}if(m.from===ME.id){if(m.type){c.msgs.push({from:'me',text:fmtM(m),raw:m.text,id:m.id,ts:m.ts,time:tm(m.ts)});c.preview=pv(m.text)}else{const pend=c.msgs.filter(x=>x.from==='me'&&!x.id).pop();if(pend)pend.id=m.id}if(currentChat===m.mid)renderMessages();buildChatList();return}$('typingRow')?.remove();
+  c.msgs.push({from:'them',text:fmtM(m),raw:m.text,id:m.id,ts:m.ts,time:tm(m.ts)});c.preview=pv(m.text);if(currentChat===m.mid&&!document.hidden)sock.emit('read',{mid:m.mid});c.time=tm(m.ts);
   if(currentChat===m.mid)renderMessages();else{c.unread++;showToast('💬 ข้อความใหม่จาก '+c.name)}buildChatList();$('ci-'+currentChat)?.classList.add('active')});
  sock.on('typing',({mid})=>{if(currentChat!==mid||$('typingRow'))return;const c=chats[mid],box=$('cwMessages');const t=document.createElement('div');t.className='msg-row fade-in';t.id='typingRow';t.innerHTML=`<div class="msg-avatar-sm" style="background:${c.grad}">${c.avatar}</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;box.appendChild(t);box.scrollTop=1e9;setTimeout(()=>t.remove(),4000)});
  sock.on('match',async m=>{await loadChats();loadPeople();showToast('🎉 แมตช์ใหม่กับ '+esc(m.other.name)+'!')});
@@ -67,7 +71,7 @@ window.checkAge=async function(){const dob=$('dobInput').value;_checkAge();if(!d
 let lastTyping=0;
 window.sendMessage=function(){const input=$('msgInput');const text=input.value.trim();if(!text||!currentChat||!sock)return;
  const fr=scanMessageForViolations(text);if(fr.flagged){logFilterHit(currentChat,text,fr);showFilterWarning(fr);if(fr.severity==='severe')return}
- const shown=fr.flagged?censorText(text,fr.hits):text;const c=chats[currentChat];c.msgs.push({from:'me',text:esc(shown),time:tm(),flagged:fr.flagged});c.preview=esc(shown);c.time=tm();
+ const shown=fr.flagged?censorText(text,fr.hits):text;const c=chats[currentChat];c.msgs.push({from:'me',text:fmt(shown),raw:shown,ts:Date.now(),time:tm(),flagged:fr.flagged});c.preview=pv(shown);c.time=tm();
  input.value='';renderMessages();buildChatList();$('ci-'+currentChat)?.classList.add('active');sock.emit('msg',{mid:currentChat,text:shown})};
 document.addEventListener('input',e=>{if(!sock)return;if(e.target.id==='msgInput'&&currentChat&&Date.now()-lastTyping>2000){lastTyping=Date.now();sock.emit('typing',{mid:currentChat})}
  if(e.target.id==='roomMsgInput'&&currentRoom&&Date.now()-lastTyping>2000){lastTyping=Date.now();sock.emit('room:typing')}});
@@ -181,6 +185,9 @@ window.chatWithMatched=function(){closeShake();if(currentMatchedUser&&chats[curr
 // ---------- misc ----------
 document.addEventListener('DOMContentLoaded',()=>{const pm=$('payModal');if(pm){const n=document.createElement('div');n.style.cssText='margin:8px 0;padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.15);color:#fbbf24;font-size:12px;text-align:center';n.textContent='⚠️ ระบบชำระเงินจำลอง — ไม่มีการตัดเงินจริงและไม่เก็บข้อมูลบัตร';(pm.querySelector('.pay-methods')||pm.firstElementChild).before(n)}});
 setInterval(()=>{if(sock&&ME&&document.visibilityState==='visible'){if(currentPage==='moments')loadMoments();if(currentPage==='friends')loadFriends()}},20000);
+try{const q=new URLSearchParams(location.search).get('ref');if(q)localStorage.kt_ref=q.slice(0,12)}catch(e){}
+window.KT={fmtM,pv,api,me:()=>ME,setMe:m=>{ME=m;remember(m);updateLikeBar()},refresh,loadChats,loadPeople,sock:()=>sock,get chats(){return chats},openChatUid,fmt,esc,remember,STK,cfg:()=>CFG};
 })();
 // fix: the shell's click-outside handler closed the drawer in the same click that opened it
 (function(){const f=window.openProfileDrawer;window.openProfileDrawer=function(id){setTimeout(()=>f(id),0)}})();
+
