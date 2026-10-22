@@ -11,3 +11,4 @@ smoke.js
 smoke-mobile.js
 smoke-brand.js
 !public/brand/*.png
+smoke-fix.js

@@ -27,7 +27,7 @@ async function loadChats(){const L=await api('matches');Object.keys(chats).forEa
   chats[m.id]={uid:o.id,name:esc(o.name)+(o.bot?' 🤖':''),rawName:o.name,avatar:letter(o),grad:gr(o.id),online:true,time:msgs.length?msgs[msgs.length-1].time:'',preview:msgs.length?msgs[msgs.length-1].text:'แมตช์แล้ว! ทักเลย 💕',unread:0,msgs}}
  buildChatList();if(currentChat&&!chats[currentChat]){currentChat=null;$('activeChatView').style.display='none';$('emptyChatMsg').style.display=''}}
 async function loadPeople(){const L=await api('people');nearbyUsers.length=0;
- L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:((parseInt(u.id.slice(0,3),16)%150)/10+0.5).toFixed(1),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.bot?'🤖 Bot':u.premium?'👑 Premium':null,badgeColor:'rgba(124,58,237,.8)',tags:[],about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
+ L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:((parseInt(u.id.slice(0,3),16)%150)/10+0.5).toFixed(1),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.bot?'🤖 Bot':u.premium?'👑 Premium':null,badgeColor:'rgba(124,58,237,.8)',avatar:u.avatar,tags:[],about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
  if(!ME.premium&&nearbyUsers.length>3)nearbyUsers.splice(3,0,{id:'locked1',name:'???',age:'?',dist:'1.8',bio:'ใกล้มาก!',grad:'linear-gradient(135deg,#374151,#1f2937)',letter:'?',locked:true});
  // lucky/shake pools are filled per-spin from the server
  buildNearbyGrid()}

@@ -34,7 +34,7 @@ small{color:var(--t3)}.emo{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10p
 .hd{display:flex;align-items:center;gap:8px}.hd .sp{flex:1}.ic{background:var(--card2);border:0;border-radius:10px;padding:8px 10px;cursor:pointer;font-size:16px}
 .logo img{width:40px;height:40px;animation:ktb 2.4s ease-in-out infinite}@keyframes ktb{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-3deg)}}@media (prefers-reduced-motion:reduce){.logo img{animation:none}}
 </style></head><body><div id="app"></div>
-<script src="/socket.io/socket.io.js"></script><script src="/kt-call.js"></script><script>
+<script src="/socket.io/socket.io.js"></script><script src="/kt-call.js"></script><link rel="stylesheet" href="/kt-ui.css"><script src="/kt-ui.js"></script><script>
 const $=s=>document.querySelector(s),A=$('#app');let T=localStorage.kt_token,ME,CFG,sock,tab='swipe',chatMid=null,chatOther=null,room=null,roomMsgs=[],counts={},region='all',rpeer=null,rstate='idle';
 const api=async(p,b,m)=>{const r=await fetch('/api/'+p,{method:m||(b?'POST':'GET'),headers:{'content-type':'application/json','x-token':T||''},body:b&&JSON.stringify(b)});const j=await r.json().catch(()=>({}));if(!r.ok)throw j.error||'ผิดพลาด';return j};
 const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2600)};
@@ -50,12 +50,13 @@ function go(t){if(tab==='random'&&t!=='random'){sock.emit('rand:leave');rstate='
 // --- signup ---
 function signup(){let av='😎';const emos=['😎','🌸','🐱','🦊','🐼','🎮','🌈','⚡'];
 A.innerHTML=`<header><div class="logo"><img src="/brand/logo-mark.svg" alt=""><span>Kuy Talk</span></div></header><main><div style="text-align:center;margin:6px 0 10px"><img src="/brand/logo.svg" alt="Kuy Talk" style="width:150px;height:150px"></div><div class="card"><h2>สร้างโปรไฟล์</h2><small>รับฟรี 50 เหรียญ 🎁 · บัญชีเดียวกับหน้าหลัก</small><br><br>
-ชื่อ<input id=n maxlength=30>อายุ (18+)<input id=a type=number min=18 max=120 value=20>เพศ<select id=g><option value=m>ชาย</option><option value=f>หญิง</option><option value=x>อื่นๆ</option></select>
+ชื่อ<input id=n maxlength=30>วันเกิด (ต้องอายุ 18+)<input type=hidden id=dob><div class=kt-dob><select id=dd class=kt-sel aria-label="วัน"><option value="">วัน</option></select><select id=dm class=kt-sel aria-label="เดือน"><option value="">เดือน</option></select><select id=dy class=kt-sel aria-label="ปี"><option value="">ปี (ค.ศ.)</option></select></div><p id=dobErr style="color:#ff6b81;font-size:13px;min-height:18px;margin:2px 0 8px"></p>เพศ<select id=g><option value=m>ชาย</option><option value=f>หญิง</option><option value=x>อื่นๆ</option></select>
 แนะนำตัว<textarea id=b rows=2 maxlength=200 placeholder="ชอบอะไร..."></textarea>รูปโปรไฟล์<div class=emo>${emos.map(e=>`<span>${e}</span>`).join('')}</div>
 <small>หรืออัปโหลดรูป</small><input id=f type=file accept="image/*"><button class=btn id=go>เริ่มเลย 🚀</button></div></main>`;
 document.querySelectorAll('.emo span').forEach(s=>s.onclick=()=>{document.querySelectorAll('.emo span').forEach(x=>x.classList.remove('on'));s.classList.add('on');av=s.textContent});
 $('#f').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=320;const k=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-k)/2,(im.height-k)/2,k,k,0,0,320,320);av=c.toDataURL('image/jpeg',.8);toast('อัปโหลดรูปแล้ว')};im.src=URL.createObjectURL(fl)};
-$('#go').onclick=async()=>{try{const r=await api('signup',{name:$('#n').value,age:$('#a').value,gender:$('#g').value,bio:$('#b').value,avatar:av});T=localStorage.kt_token=r.token;start()}catch(e){toast(e)}}}
+ktInitDob($('#dd'),$('#dm'),$('#dy'),$('#dob'),()=>$('#dobErr').textContent='');
+$('#go').onclick=async()=>{const age=ktAgeOf($('#dob').value);if(age===null){$('#dobErr').textContent='กรุณาเลือก วัน / เดือน / ปี เกิดให้ครบ';return}if(age<18){$('#dobErr').textContent=`⚠️ คุณอายุ ${age} ปี — ต้องมีอายุ 18 ปีขึ้นไป`;return}try{const r=await api('signup',{name:$('#n').value,age,gender:$('#g').value,bio:$('#b').value,avatar:av});T=localStorage.kt_token=r.token;start()}catch(e){toast(e)}}}
 // --- swipe ---
 let cards=[];async function swipe(){await refresh();cards=await api('cards');renderSwipe()}
 function renderSwipe(){const c=cards[0];shell(`<small>ปัดฟรีเหลือวันนี้: <b>${ME.swipesLeft}</b></small>
