@@ -1,0 +1,123 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Kuy Talk – ปัดหาคู่ (คลาสสิก)</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}body{font-family:Prompt,sans-serif;background:#0b0a10;color:#fff;display:flex;justify-content:center;min-height:100vh}
+:root{--grad:linear-gradient(135deg,#ffd000,#ff3b5c);--card:#1a1724;--card2:#241f33;--t3:#a09ab8}
+#app{width:100%;max-width:440px;min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#16121f,#0b0a10)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
+.logo{font-weight:800;font-size:22px;background:var(--grad);-webkit-background-clip:text;color:transparent}.logo a{color:inherit;text-decoration:none}
+.coin{background:var(--card2);padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:600}
+main{flex:1;padding:0 16px 90px;overflow:auto}
+nav{position:fixed;bottom:0;width:100%;max-width:440px;display:flex;background:#15121ee8;backdrop-filter:blur(8px);border-top:1px solid #2a2440;z-index:5}
+nav button{flex:1;background:none;border:0;color:var(--t3);padding:10px 0;font:inherit;font-size:11px;cursor:pointer}nav button.on{color:#ffd000}nav b{display:block;font-size:21px}
+.btn{background:var(--grad);border:0;color:#fff;padding:12px 18px;border-radius:14px;font:inherit;font-weight:700;cursor:pointer;width:100%}.btn.sm{width:auto;padding:8px 14px}.btn.ghost{background:var(--card2)}
+input,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px solid #352e4d;background:#1f1b2c;color:#fff;font:inherit;margin:6px 0 12px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px}
+.stack{position:relative;height:440px;margin-top:6px}
+.sw{position:absolute;inset:0;border-radius:24px;overflow:hidden;background:linear-gradient(160deg,#ffd00033,#ff3b5c55);box-shadow:0 10px 30px #0008;touch-action:none;user-select:none;transition:transform .3s}
+.sw .av{height:70%;display:flex;align-items:center;justify-content:center;font-size:130px;background-size:cover;background-position:center}
+.sw .info{padding:14px 18px}.sw h2{font-size:24px}.sw p{color:#ddd}
+.stamp{position:absolute;top:24px;font-size:30px;font-weight:800;padding:4px 12px;border:4px solid;border-radius:10px;opacity:0}.stamp.l{right:20px;color:#ff4d6d;transform:rotate(15deg)}.stamp.r{left:20px;color:#3ce08a;transform:rotate(-15deg)}
+.acts{display:flex;justify-content:center;gap:18px;margin-top:14px}.acts button{width:62px;height:62px;border-radius:50%;border:0;font-size:26px;background:var(--card2);cursor:pointer}
+.row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;background:var(--card);margin-bottom:8px;cursor:pointer}
+.pic{width:48px;height:48px;border-radius:50%;background:#352e4d center/cover;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.chat{display:flex;flex-direction:column;height:calc(100vh - 160px)}.msgs{flex:1;overflow:auto;padding:8px 0;display:flex;flex-direction:column;gap:6px}
+.m{max-width:78%;padding:9px 13px;border-radius:18px;background:var(--card2);align-self:flex-start;word-break:break-word}.m.me{align-self:flex-end;background:var(--grad)}.m.sys{align-self:center;background:none;color:var(--t3);font-size:13px}.m small{display:block;font-size:11px;color:#ffd000;cursor:pointer}
+.send{display:flex;gap:8px}.send input{margin:0}
+.pack{display:flex;justify-content:space-between;align-items:center}.badge{background:#ffd000;color:#000;font-size:11px;padding:2px 8px;border-radius:8px;font-weight:700}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ff3b5c;padding:10px 18px;border-radius:14px;z-index:99;max-width:90%}
+.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:50}.modal .card{width:88%;max-width:360px}
+small{color:var(--t3)}.emo{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.emo span{font-size:30px;cursor:pointer;padding:4px;border-radius:10px}.emo span.on{background:#ff3b5c55}
+.tabs{display:flex;gap:6px;overflow:auto;margin-bottom:8px}.tabs button{flex:none;border:0;padding:6px 12px;border-radius:20px;background:var(--card2);color:#ddd;font:inherit;font-size:12px;cursor:pointer}.tabs button.on{background:var(--grad);color:#fff}
+.hd{display:flex;align-items:center;gap:8px}.hd .sp{flex:1}.ic{background:var(--card2);border:0;border-radius:10px;padding:8px 10px;cursor:pointer;font-size:16px}
+</style></head><body><div id="app"></div>
+<script src="/socket.io/socket.io.js"></script><script src="/kt-call.js"></script><script>
+const $=s=>document.querySelector(s),A=$('#app');let T=localStorage.kt_token,ME,CFG,sock,tab='swipe',chatMid=null,chatOther=null,room=null,roomMsgs=[],counts={},region='all',rpeer=null,rstate='idle';
+const api=async(p,b,m)=>{const r=await fetch('/api/'+p,{method:m||(b?'POST':'GET'),headers:{'content-type':'application/json','x-token':T||''},body:b&&JSON.stringify(b)});const j=await r.json().catch(()=>({}));if(!r.ok)throw j.error||'ผิดพลาด';return j};
+const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2600)};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isImg=a=>typeof a==='string'&&a.startsWith('data:image/');
+const pic=(a,st='')=>isImg(a)?`<div class="pic" style="background-image:url(${a});${st}"></div>`:`<div class="pic" style="${st}">${esc(a||'🙂')}</div>`;
+const tm=ts=>new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+const J=o=>esc(JSON.stringify(o));
+function shell(body){A.innerHTML=`<header><div class="logo"><a href="/">Kuy Talk 💘</a></div><div class="coin" onclick="go('shop')">🪙 ${ME.coins}${ME.premium?' 👑':''}</div></header><main>${body}</main>
+<nav>${[['swipe','🔥','ปัด'],['random','🎲','สุ่มคุย'],['matches','💬','แชท'],['rooms','🏙️','ห้องจังหวัด'],['shop','💎','พรีเมียม']].map(([k,i,l])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')"><b>${i}</b>${l}</button>`).join('')}</nav>`}
+async function refresh(){ME=await api('me')}
+function go(t){if(tab==='random'&&t!=='random'){sock.emit('rand:leave');rstate='idle'}if(tab==='rooms'&&t!=='rooms'&&room){sock.emit('room:leave');room=null}tab=t;chatMid=null;({swipe,random:randomV,matches,rooms:roomsV,shop})[t]()}
+// --- signup ---
+function signup(){let av='😎';const emos=['😎','🌸','🐱','🦊','🐼','🎮','🌈','⚡'];
+A.innerHTML=`<header><div class="logo">Kuy Talk 💘</div></header><main><div class="card"><h2>สร้างโปรไฟล์</h2><small>รับฟรี 50 เหรียญ 🎁 · บัญชีเดียวกับหน้าหลัก</small><br><br>
+ชื่อ<input id=n maxlength=30>อายุ (18+)<input id=a type=number min=18 max=120 value=20>เพศ<select id=g><option value=m>ชาย</option><option value=f>หญิง</option><option value=x>อื่นๆ</option></select>
+แนะนำตัว<textarea id=b rows=2 maxlength=200 placeholder="ชอบอะไร..."></textarea>รูปโปรไฟล์<div class=emo>${emos.map(e=>`<span>${e}</span>`).join('')}</div>
+<small>หรืออัปโหลดรูป</small><input id=f type=file accept="image/*"><button class=btn id=go>เริ่มเลย 🚀</button></div></main>`;
+document.querySelectorAll('.emo span').forEach(s=>s.onclick=()=>{document.querySelectorAll('.emo span').forEach(x=>x.classList.remove('on'));s.classList.add('on');av=s.textContent});
+$('#f').onchange=e=>{const fl=e.target.files[0];if(!fl)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=320;const k=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-k)/2,(im.height-k)/2,k,k,0,0,320,320);av=c.toDataURL('image/jpeg',.8);toast('อัปโหลดรูปแล้ว')};im.src=URL.createObjectURL(fl)};
+$('#go').onclick=async()=>{try{const r=await api('signup',{name:$('#n').value,age:$('#a').value,gender:$('#g').value,bio:$('#b').value,avatar:av});T=localStorage.kt_token=r.token;start()}catch(e){toast(e)}}}
+// --- swipe ---
+let cards=[];async function swipe(){await refresh();cards=await api('cards');renderSwipe()}
+function renderSwipe(){const c=cards[0];shell(`<small>ปัดฟรีเหลือวันนี้: <b>${ME.swipesLeft}</b></small>
+<div class=stack>${c?`<div class=sw id=sw><div class="av" ${isImg(c.avatar)?`style="background-image:url(${c.avatar})"`:''}>${isImg(c.avatar)?'':esc(c.avatar)}</div><div class=info><h2>${esc(c.name)}, ${c.age} ${c.bot?'<small>🤖 บอท</small>':''}</h2><p>${esc(c.bio)}</p></div><div class="stamp r">LIKE</div><div class="stamp l">NOPE</div></div>`:'<div class=card style="text-align:center;margin-top:120px">หมดโปรไฟล์แล้ว 😅<br><small>ลองโหมดสุ่มคุยหรือห้องจังหวัดดูสิ</small></div>'}</div>
+${c?`<div class=acts><button onclick="doSwipe('left')">✖️</button><button onclick="doSwipe('right',1)" title="ซูเปอร์ไลค์">⭐</button><button onclick="doSwipe('right')">💚</button><button onclick='report(${J({id:c.id,name:c.name})})' title="รายงาน/บล็อก">🚩</button></div><p style="text-align:center"><small>⭐ ซูเปอร์ไลค์ = ${CFG.prices.superlike} เหรียญ</small></p>`:''}`);
+const el=$('#sw');if(!el)return;let x0=null,dx=0;el.onpointerdown=e=>{x0=e.clientX;el.style.transition='none';el.setPointerCapture(e.pointerId)};
+el.onpointermove=e=>{if(x0==null)return;dx=e.clientX-x0;el.style.transform=`translateX(${dx}px) rotate(${dx/15}deg)`;el.querySelector('.r').style.opacity=dx>0?dx/100:0;el.querySelector('.l').style.opacity=dx<0?-dx/100:0};
+el.onpointerup=()=>{x0=null;el.style.transition='';if(Math.abs(dx)>100)doSwipe(dx>0?'right':'left');else{el.style.transform='';el.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0)}dx=0}}
+async function doSwipe(dir,sup){const c=cards[0];if(!c)return;try{const r=await api('swipe',{to:c.id,dir,superlike:!!sup});const el=$('#sw');if(el)el.style.transform=`translateX(${dir=='right'?600:-600}px) rotate(${dir=='right'?30:-30}deg)`;ME=r.me;cards.shift();setTimeout(()=>{renderSwipe();if(r.match)matchModal(r.match)},250)}catch(e){toast(e);if(String(e).includes('ครบ'))setTimeout(()=>go('shop'),800)}}
+function matchModal(m){const d=document.createElement('div');d.className='modal';d.innerHTML=`<div class=card style="text-align:center"><h1>🎉 แมตช์แล้ว!</h1><br>${pic(m.other.avatar,'width:90px;height:90px;font-size:50px;margin:auto')}<p>คุณกับ ${esc(m.other.name)} ชอบกันและกัน</p><br><button class=btn id=mc>ทักเลย 💬</button><br><br><button class="btn ghost" id=mx>ปัดต่อ</button></div>`;document.body.append(d);d.querySelector('#mx').onclick=()=>d.remove();d.querySelector('#mc').onclick=()=>{d.remove();tab='matches';openChat(m.id,m.other)}}
+// --- matches/chat ---
+async function matches(){const l=await api('matches');shell(`<h3>แมตช์ของคุณ</h3><br>${l.map(m=>`<div class=row onclick='openChat("${m.id}",${J(m.other)})'>${pic(m.other.avatar)}<div><b>${esc(m.other.name)}</b>${m.other.bot?' 🤖':''}<br><small>${esc(m.last?m.last.text:'เริ่มคุยกันเลย!')}</small></div></div>`).join('')||'<small>ยังไม่มีแมตช์ ไปปัดก่อนนะ 🔥</small>'}`)}
+async function openChat(mid,o){chatMid=mid;chatOther=o;const msgs=await api('messages/'+mid);shell(`<div class=chat><div class="row hd" style="cursor:default"><button class=ic onclick="go('matches')">⬅️</button>${pic(o.avatar)}<b class=sp>${esc(o.name)}</b><button class=ic onclick="KTCall.start(chatMid,false,chatOther.name)">📞</button><button class=ic onclick="KTCall.start(chatMid,true,chatOther.name)">📹</button><button class=ic onclick="report(chatOther)">🚩</button></div><div class=msgs id=ms></div><div class=send><input id=t maxlength=1000 placeholder="พิมพ์ข้อความ..."><button class="btn sm" id=sb>ส่ง</button></div></div>`);
+msgs.forEach(addMsg);let lt=0;const send=()=>{const v=$('#t').value.trim();if(v){sock.emit('msg',{mid,text:v});$('#t').value=''}};$('#sb').onclick=send;$('#t').onkeydown=e=>{if(e.key=='Enter')send();else if(Date.now()-lt>2000){lt=Date.now();sock.emit('typing',{mid})}}}
+function addMsg(m){const ms=$('#ms');if(!ms)return;$('#typ')?.remove();const d=document.createElement('div');d.className='m'+(m.from===ME.id||m.me?' me':'')+(m.sys?' sys':'');d.textContent=m.text;ms.append(d);ms.scrollTop=1e9}
+// --- random ---
+function randomV(){rstate='idle';shell(`<div class=card style="text-align:center"><h2>🎲 สุ่มคุยกับคนแปลกหน้า</h2><small>จับคู่กับคนที่ออนไลน์อยู่ ถ้าไม่มีภายใน 4 วิ จะได้คุยกับบอท</small><br><br>
+<select id=rf><option value="">ใครก็ได้ (ฟรี)</option><option value=f>เฉพาะผู้หญิง – ${CFG.prices.filter} เหรียญ</option><option value=m>เฉพาะผู้ชาย – ${CFG.prices.filter} เหรียญ</option></select><button class=btn onclick="rJoin()">เริ่มสุ่ม</button></div>`)}
+function rJoin(){const f=$('#rf')?$('#rf').value:window._rf||'';window._rf=f;rpeer=null;rstate='wait';sock.emit('rand:join',{filter:f});rChat('กำลังหาคู่คุย... ⏳')}
+function rChat(status){shell(`<div class=chat><div class="row hd" id=rh style="cursor:default">${status}</div><div class=msgs id=ms></div><div class=send><button class="btn ghost sm" onclick="rJoin()">⏭️</button><input id=t maxlength=1000 placeholder="พิมพ์..."><button class="btn sm" id=sb>ส่ง</button></div></div>`);
+const send=()=>{const v=$('#t').value.trim();if(v&&rstate==='chat'){sock.emit('rand:msg',v);addMsg({text:v,me:1});$('#t').value=''}};$('#sb').onclick=send;$('#t').onkeydown=e=>e.key=='Enter'&&send()}
+// --- province rooms ---
+const RN={all:'ทั้งหมด',central:'ภาคกลาง',north:'ภาคเหนือ',northeast:'ภาคอีสาน',east:'ภาคตะวันออก',west:'ภาคตะวันตก',south:'ภาคใต้'};
+function roomsV(){if(room)return roomChat();shell(`<h3>🏙️ ห้องแชท 77 จังหวัด</h3><input id=ps placeholder="ค้นหาจังหวัด..." oninput="roomList()"><div class=tabs>${Object.entries(RN).map(([k,v])=>`<button class="${region==k?'on':''}" onclick="region='${k}';roomsV()">${v}</button>`).join('')}</div><div id=pl></div>`);roomList()}
+function roomList(){const q=($('#ps')||{}).value||'';const pl=$('#pl');if(!pl)return;let L=CFG.provinces.filter(p=>(region==='all'||p.region===region)&&(!q||p.th.includes(q)||p.en.toLowerCase().includes(q.toLowerCase())));L.sort((a,b)=>(counts[b.id]||0)-(counts[a.id]||0));
+ pl.innerHTML=`<small>${L.length} จังหวัด</small><br><br>`+L.map(p=>`<div class=row onclick="joinRoom('${p.id}')"><div class=pic style="font-size:20px">📍</div><div style="flex:1"><b>${esc(p.th)}</b><br><small>${esc(p.en)} · ${RN[p.region]}</small></div><small style="color:#3ce08a">● ${counts[p.id]||0}</small></div>`).join('')||'<small>ไม่พบจังหวัด</small>'}
+function joinRoom(id){room=id;roomMsgs=[];sock.emit('room:join',id);roomChat()}
+function roomChat(){const p=CFG.provinces.find(x=>x.id===room);shell(`<div class=chat><div class="row hd" style="cursor:default"><button class=ic onclick="sock.emit('room:leave');room=null;roomsV()">⬅️</button><b class=sp>ห้อง${esc(p.th)}</b><small id=rc style="color:#3ce08a">● ${counts[room]||0} คนออนไลน์</small></div><div class=msgs id=ms></div><small id=rty style="min-height:16px"></small><div class=send><input id=t maxlength=500 placeholder="พิมพ์ในห้อง${esc(p.th)}..."><button class="btn sm" id=sb>ส่ง</button></div></div>`);
+ renderRoom();let lt=0;const send=()=>{const v=$('#t').value.trim();if(v){sock.emit('room:msg',{room,text:v});$('#t').value=''}};$('#sb').onclick=send;$('#t').onkeydown=e=>{if(e.key=='Enter')send();else if(Date.now()-lt>2000){lt=Date.now();sock.emit('room:typing')}}}
+function renderRoom(){const ms=$('#ms');if(!ms||!room)return;ms.innerHTML='<div class="m sys">ยินดีต้อนรับ — สุภาพ ห้ามสแปม · เก็บ 100 ข้อความล่าสุด</div>'+roomMsgs.map(m=>m.uid===ME.id?`<div class="m me">${esc(m.text)}</div>`:`<div class=m><small onclick='report(${J({id:m.uid,name:m.name})})'>${esc(m.name)}${m.bot?' 🤖':''} · ${tm(m.ts)}</small>${esc(m.text)}</div>`).join('');ms.scrollTop=1e9}
+// --- shop / settings ---
+async function shop(){await refresh();const bl=await api('blocks');shell(`<div class=card><h3>🪙 เหรียญของคุณ: ${ME.coins}</h3><small>${ME.premium?'👑 Premium ถึง '+new Date(ME.premiumUntil).toLocaleDateString('th-TH'):'ยังไม่ได้เป็น Premium'}</small><br><small>⚠️ ระบบชำระเงินจำลอง (ทดสอบเท่านั้น) – ไม่มีการเก็บข้อมูลบัตรหรือตัดเงินจริง</small></div>
+<h3>เติมเหรียญ</h3><br>${CFG.packs.map((p,i)=>`<div class="card pack"><div><b>${p.coins} เหรียญ</b> ${i==1?'<span class=badge>ยอดนิยม</span>':''}<br><small>฿${p.thb} (จำลอง)</small></div><button class="btn sm" onclick="topup('${p.id}',${p.thb})">ซื้อ</button></div>`).join('')}
+<h3>ฟีเจอร์พรีเมียม</h3><br><div class="card pack"><div><b>👑 Premium ${CFG.premiumDays} วัน</b><br><small>ปัด/กดหัวใจไม่จำกัด · ดูคนไลค์ฟรี · สุ่มดวงไม่จำกัด — ${CFG.prices.premium} เหรียญ</small></div><button class="btn sm" onclick="buyP()">${ME.premium?'ต่ออายุ':'ซื้อ'}</button></div>
+<div class="card pack"><div><b>👀 ดูว่าใครไลค์คุณ</b><br><small>${ME.premium?'ฟรีสำหรับ Premium':CFG.prices.likesme+' เหรียญ/ครั้ง'}</small></div><button class="btn sm" onclick="likesMe()">ดู</button></div>
+<div class=card><small>⭐ ซูเปอร์ไลค์ ${CFG.prices.superlike} เหรียญ · 🎯 ตัวกรองเพศในสุ่มคุย ${CFG.prices.filter} เหรียญ/ครั้ง · ฟรี ${CFG.free} ครั้ง/วัน</small></div><div id=lm></div>
+<h3>🚫 รายชื่อที่บล็อก (${bl.length})</h3><br>${bl.map(u=>`<div class=row>${pic(u.avatar)}<div style="flex:1"><b>${esc(u.name)}</b></div><button class="btn ghost sm" onclick="unblock('${u.id}')">ยกเลิกบล็อก</button></div>`).join('')||'<small>ไม่มี</small>'}<br><br>
+<button class="btn ghost" onclick="location.href='/'">ไปหน้าหลัก Kuy Talk</button><br><br><button class="btn ghost" onclick="if(confirm('ออกจากระบบ?')){localStorage.removeItem('kt_token');location.reload()}">ออกจากระบบ</button>`)}
+function topup(id,thb){const d=document.createElement('div');d.className='modal';d.innerHTML=`<div class=card style="text-align:center"><h3>💳 ชำระเงินจำลอง</h3><p>฿${thb}</p><small>นี่คือการจำลอง ไม่มีการตัดเงินจริง</small><br><br><button class=btn id=ok>ยืนยัน (จำลอง)</button><br><br><button class="btn ghost" id=no>ยกเลิก</button></div>`;document.body.append(d);d.querySelector('#no').onclick=()=>d.remove();d.querySelector('#ok').onclick=async()=>{ME=await api('topup',{pack:id});d.remove();toast('เติมเหรียญสำเร็จ 🎉');shop()}}
+async function buyP(){try{ME=await api('buy',{item:'premium'});toast('👑 เปิด Premium แล้ว');shop()}catch(e){toast(e)}}
+async function unblock(id){await api('unblock',{id});toast('ยกเลิกบล็อกแล้ว');shop()}
+async function likesMe(){try{const r=await api('likes-me',{});ME=r.me;await shop();$('#lm').innerHTML='<h3>คนที่ไลค์คุณ</h3><br>'+(r.list.map(u=>`<div class=row>${pic(u.avatar)}<div><b>${esc(u.name)}, ${u.age}</b> ${u.superlike?'⭐':''}<br><small>${esc(u.bio)}</small></div></div>`).join('')||'<small>ยังไม่มี (ที่คุณยังไม่ได้ปัด)</small>')}catch(e){toast(e)}}
+// --- report / block ---
+function report(u){if(!u||!u.id||u.id===ME.id)return;const d=document.createElement('div');d.className='modal';d.innerHTML=`<div class=card><h3>🚩 รายงาน / บล็อก</h3><p>${esc(u.name)}</p><select id=rcat><option value=spam>สแปม/ขายของ</option><option value=harassment>คุกคาม/หยาบคาย</option><option value=fake>โปรไฟล์ปลอม</option><option value=scam>หลอกลวง</option><option value=underage>อายุต่ำกว่า 18</option><option value=other>อื่นๆ</option></select>
+<textarea id=rdet rows=3 maxlength=1000 placeholder="รายละเอียด (ไม่บังคับ)"></textarea><label><input type=checkbox id=rblk checked style="width:auto;margin:0 6px 0 0">บล็อกผู้ใช้นี้ด้วย</label><br><br><button class=btn id=rs>ส่งรายงาน</button><br><br><button class="btn ghost" id=rb>บล็อกอย่างเดียว</button><br><br><button class="btn ghost" id=rx>ยกเลิก</button></div>`;document.body.append(d);
+ const blk=async()=>{await api('block',{id:u.id,reason:d.querySelector('#rcat').value});if(rpeer&&rpeer.id===u.id){sock.emit('rand:leave');rpeer=null}};
+ const done=()=>{d.remove();if(tab==='matches'&&chatMid&&chatOther&&chatOther.id===u.id)go('matches');else if(tab==='swipe')swipe();else if(tab==='random')randomV();else if(tab==='rooms'&&room)sock.emit('room:join',room)};
+ d.querySelector('#rx').onclick=()=>d.remove();
+ d.querySelector('#rb').onclick=async()=>{try{await blk();toast('🚫 บล็อกแล้ว');done()}catch(e){toast(e)}};
+ d.querySelector('#rs').onclick=async()=>{try{await api('report',{id:u.id,category:d.querySelector('#rcat').value,detail:d.querySelector('#rdet').value,severity:d.querySelector('#rcat').value==='underage'?'critical':'medium',context:'classic:'+tab});if(d.querySelector('#rblk').checked)await blk();toast('✅ ส่งรายงานแล้ว ทีมงานจะตรวจสอบ');done()}catch(e){toast(e)}}}
+// --- boot ---
+async function start(){try{await refresh()}catch(e){if(String(e).includes('ระงับ')){A.innerHTML='<main><div class=card style="margin-top:80px;text-align:center">🚫 บัญชีนี้ถูกระงับ</div></main>';return}localStorage.removeItem('kt_token');T=null;return signup()}
+CFG=await api('config');sock=io({auth:{token:T}});KTCall.init(sock);
+sock.on('connect',()=>{if(room)sock.emit('room:join',room)});
+sock.on('msg',m=>{if(m.mid===chatMid&&tab==='matches')addMsg(m);else if(m.from!==ME.id)toast('💬 ข้อความใหม่')});
+sock.on('typing',({mid})=>{if(mid===chatMid&&!$('#typ')&&$('#ms')){const d=document.createElement('div');d.id='typ';d.className='m sys';d.textContent='กำลังพิมพ์...';$('#ms').append(d);setTimeout(()=>d.remove(),4000)}});
+sock.on('match',m=>{if(tab!=='swipe')toast('🎉 แมตช์ใหม่กับ '+m.other.name)});sock.on('err',e=>{toast(e);if(tab==='random'&&rstate!=='chat')randomV()});sock.on('coins',c=>{ME.coins=c;const e=$('.coin');if(e)e.textContent='🪙 '+c});
+sock.on('rand:waiting',()=>{rstate='wait'});sock.on('rand:paired',p=>{if(tab!=='random')return;rstate='chat';rpeer=p;$('#rh').innerHTML=`${pic(p.avatar)}<div class=sp><b>${esc(p.name)}, ${p.age}</b>${p.bot?' 🤖':''}<br><small>${esc(p.bio)}</small></div><button class=ic onclick='report(${J({id:p.id,name:p.name})})'>🚩</button>`;addMsg({text:'เชื่อมต่อแล้ว ทักทายกันเลย!',sys:1})});
+sock.on('rand:msg',m=>{if(rstate==='chat')addMsg({text:m.text})});sock.on('rand:ended',()=>{rstate='idle';addMsg({text:'อีกฝ่ายออกไปแล้ว กด ⏭️ เพื่อสุ่มคนใหม่',sys:1})});
+sock.on('room:counts',c=>{counts=c;if(tab==='rooms'){if(room){const e=$('#rc');if(e)e.textContent=`● ${c[room]||0} คนออนไลน์`}else roomList()}});
+sock.on('room:history',d=>{if(d.room===room){roomMsgs=d.msgs;renderRoom()}});
+sock.on('room:msg',m=>{if(m.room===room){roomMsgs.push(m);if(roomMsgs.length>100)roomMsgs.shift();const t=$('#rty');if(t)t.textContent='';renderRoom()}});
+sock.on('room:typing',d=>{if(d.room===room){const t=$('#rty');if(t){t.textContent=d.name+' กำลังพิมพ์...';clearTimeout(t._t);t._t=setTimeout(()=>t.textContent='',3000)}}});
+sock.on('disconnect',r=>{if(r==='io server disconnect')toast('การเชื่อมต่อถูกตัด')});
+go('swipe')}
+start();
+</script></body></html>

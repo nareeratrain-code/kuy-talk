@@ -1,0 +1,25 @@
+// Kuy Talk – 1:1 WebRTC voice/video calls with Socket.IO signaling (matched users only)
+window.KTCall=(function(){let outQ=[],sent=false;const ready=()=>{sent=true;outQ.forEach(c=>sock.emit('call:ice',{mid,cand:c}));outQ=[]};let sock,pc,local,mid,ui,timer,secs=0,pend=[];const flush=async()=>{if(!pc||!pc.remoteDescription)return;const q=pend;pend=[];for(const c of q)try{await pc.addIceCandidate(c)}catch{}};const ICE=[{urls:'stun:stun.l.google.com:19302'}];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function el(){if(ui)return ui;ui=document.createElement('div');ui.id='ktCall';ui.style.cssText='position:fixed;inset:0;z-index:9999;background:#0b0814f2;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:Prompt,sans-serif;gap:14px';
+ ui.innerHTML=`<video id=ktRemote autoplay playsinline style="max-width:100%;max-height:60vh;border-radius:16px;background:#000;display:none"></video><video id=ktLocal autoplay playsinline muted style="position:absolute;right:16px;top:16px;width:110px;border-radius:12px;display:none"></video><audio id=ktAudio autoplay></audio>
+ <div id=ktName style="font-size:22px;font-weight:700"></div><div id=ktStatus style="color:#bbb"></div><div id=ktBtns style="display:flex;gap:18px"></div>`;document.body.append(ui);return ui}
+const btn=(t,bg,f)=>{const b=document.createElement('button');b.textContent=t;b.style.cssText=`width:64px;height:64px;border-radius:50%;border:0;font-size:26px;cursor:pointer;background:${bg};color:#fff`;b.onclick=f;return b};
+function show(name,status,btns){el().style.display='flex';ui.querySelector('#ktName').innerHTML=esc(name);ui.querySelector('#ktStatus').textContent=status;const B=ui.querySelector('#ktBtns');B.innerHTML='';btns.forEach(b=>B.append(b))}
+const status=t=>ui&&(ui.querySelector('#ktStatus').textContent=t);
+async function media(video){try{return await navigator.mediaDevices.getUserMedia({audio:true,video})}catch(e){throw 'เข้าถึงไมค์/กล้องไม่ได้ ('+(e.name||e)+')'}}
+function newPC(video){pc=new RTCPeerConnection({iceServers:ICE});outQ=[];sent=false;pc.onicecandidate=e=>{if(!e.candidate)return;sent?sock.emit('call:ice',{mid,cand:e.candidate}):outQ.push(e.candidate)};
+ pc.ontrack=e=>{const st=e.streams[0];if(video){const r=ui.querySelector('#ktRemote');r.srcObject=st;r.style.display='block'}else ui.querySelector('#ktAudio').srcObject=st};
+ pc.onconnectionstatechange=()=>{if(pc&&pc.connectionState==='connected'){secs=0;clearInterval(timer);timer=setInterval(()=>status(`${String(Math.floor(++secs/60)).padStart(2,'0')}:${String(secs%60).padStart(2,'0')}`),1000)}if(pc&&['failed','disconnected'].includes(pc.connectionState))end(true,'สายหลุด')};
+ local.getTracks().forEach(t=>pc.addTrack(t,local));const me=pc;setTimeout(()=>{if(pc===me&&me.connectionState!=='connected'&&me.remoteDescription)end(true,'เชื่อมต่อไม่สำเร็จ — เครือข่ายอาจบล็อก (ต้องใช้ TURN server)')},25000);if(video){const l=ui.querySelector('#ktLocal');l.srcObject=local;l.style.display='block'}}
+function end(send=true,msg='วางสายแล้ว'){if(send&&mid)sock.emit('call:end',{mid});clearInterval(timer);pc&&pc.close();pc=null;local&&local.getTracks().forEach(t=>t.stop());local=null;
+ if(ui){ui.querySelector('#ktRemote').style.display='none';ui.querySelector('#ktLocal').style.display='none';status(msg);setTimeout(()=>ui.style.display='none',900)}mid=null;pend=[]}
+async function start(m,video,name){if(pc||mid)return;pend=[];if(!window.RTCPeerConnection)return alert('เบราว์เซอร์ไม่รองรับการโทร');mid=m;show(name,'กำลังโทร...',[btn('📵','#ef4444',()=>end())]);
+ try{local=await media(video);newPC(video);const o=await pc.createOffer();await pc.setLocalDescription(o);sock.emit('call:offer',{mid,sdp:o,video});ready()}catch(e){end(false,String(e))}}
+function init(s){sock=s;
+ s.on('call:offer',async d=>{if(pc||mid){return s.emit('call:reject',{mid:d.mid,reason:'busy'})}mid=d.mid;pend=[];show(d.from.name,(d.video?'📹 วิดีโอคอล':'📞 โทรเข้า')+'...',[btn('📞','#22c55e',async()=>{try{local=await media(d.video);newPC(d.video);await pc.setRemoteDescription(d.sdp);await flush();const a=await pc.createAnswer();await pc.setLocalDescription(a);s.emit('call:answer',{mid,sdp:a});ready();status('กำลังเชื่อมต่อ...');ui.querySelector('#ktBtns').innerHTML='';ui.querySelector('#ktBtns').append(btn('📵','#ef4444',()=>end()))}catch(e){s.emit('call:reject',{mid});end(false,String(e))}}),btn('📵','#ef4444',()=>{s.emit('call:reject',{mid});end(false,'ปฏิเสธสายแล้ว')})])});
+ s.on('call:answer',async d=>{if(pc&&d.mid===mid){await pc.setRemoteDescription(d.sdp);await flush();status('กำลังเชื่อมต่อ...')}});
+ s.on('call:ice',async d=>{if(d.mid!==mid)return;pend.push(d.cand);await flush()});
+ s.on('call:end',d=>{if(d.mid===mid||!d.mid)end(false,d.reason==='bot'?'บอทรับสายไม่ได้ 🤖 (ลองโทรหาผู้ใช้จริง)':d.reason==='offline'?'อีกฝ่ายออฟไลน์อยู่':'อีกฝ่ายวางสายแล้ว')});
+ s.on('call:reject',d=>{if(d.mid===mid)end(false,d.reason==='busy'?'อีกฝ่ายสายไม่ว่าง':'อีกฝ่ายปฏิเสธสาย')})}
+return{init,start,end}})();

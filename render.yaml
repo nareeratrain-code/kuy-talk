@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: kuy-talk
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ADMIN_PASSWORD
+        sync: false
+      # - key: DATA_DIR        # set to the disk mount path if you attach a disk (paid plan)
+      #   value: /var/data
+    # disk:                    # paid plans only – persistent data
+    #   name: kuy-talk-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
