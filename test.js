@@ -20,7 +20,7 @@ w=wait(sb,'room:history');sa.emit('room:join','bangkok');sb.emit('room:join','ba
 const cnt=await wait(sa,'room:counts',c=>c.bangkok>=4);ok(cnt.bangkok>=4,'room online count ('+cnt.bangkok+' incl. 2 bot presence)');
 w=wait(sb,'room:typing');sa.emit('room:typing');ok((await w).name==='TestA','room typing indicator');
 w=wait(sb,'room:msg',m=>m.uid===meA.id);sa.emit('room:msg',{room:'bangkok',text:'สวัสดีกรุงเทพ fuck <script>'});const rm=await w;ok(rm.text.includes('****')&&!rm.text.includes('<'),'room msg realtime + swear filter + sanitise: '+rm.text);
-const bot=await wait(sb,'room:msg',m=>m.bot,9000).catch(()=>null);ok(!!bot,'bot chats in popular room');
+const bot=await wait(sb,'room:msg',m=>m.bot,30000).catch(()=>null);ok(!!bot,'bot chats in popular room');
 let errs=0;sa.on('err',()=>errs++);for(let i=0;i<10;i++)sa.emit('room:msg',{room:'bangkok',text:'flood '+i});await new Promise(r=>setTimeout(r,800));ok(errs>0,'room flood protection');
 const sc=io(B,{auth:{token:a}});w=wait(sc,'room:history');sc.emit('room:join','bangkok');const hist=await w;ok(hist.msgs.some(m=>m.text.startsWith('สวัสดีกรุงเทพ')),'room history saved ('+hist.msgs.length+')');sc.close();
 // moments

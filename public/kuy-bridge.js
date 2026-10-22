@@ -182,3 +182,5 @@ window.chatWithMatched=function(){closeShake();if(currentMatchedUser&&chats[curr
 document.addEventListener('DOMContentLoaded',()=>{const pm=$('payModal');if(pm){const n=document.createElement('div');n.style.cssText='margin:8px 0;padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.15);color:#fbbf24;font-size:12px;text-align:center';n.textContent='⚠️ ระบบชำระเงินจำลอง — ไม่มีการตัดเงินจริงและไม่เก็บข้อมูลบัตร';(pm.querySelector('.pay-methods')||pm.firstElementChild).before(n)}});
 setInterval(()=>{if(sock&&ME&&document.visibilityState==='visible'){if(currentPage==='moments')loadMoments();if(currentPage==='friends')loadFriends()}},20000);
 })();
+// fix: the shell's click-outside handler closed the drawer in the same click that opened it
+(function(){const f=window.openProfileDrawer;window.openProfileDrawer=function(id){setTimeout(()=>f(id),0)}})();
