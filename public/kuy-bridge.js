@@ -62,7 +62,7 @@ let ROOMCOUNTS={};
 // ---------- overrides: age gate ----------
 const _checkAge=window.checkAge;
 window.checkAge=async function(){const dob=$('dobInput').value;_checkAge();if(!dob)return;
- const age=Math.floor((Date.now()-new Date(dob))/31557600000);if(age<18)return;try{CFG=await api('config');setupProvinces();await ensureAccount(age);connect();setTimeout(loadAll,700)}catch(e){showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+e)}};
+ const age=Math.floor((Date.now()-new Date(dob))/31557600000);if(age<18)return;try{CFG=await api('config');setupProvinces();await ensureAccount(age);connect();setTimeout(()=>loadAll().catch(()=>{}).finally(()=>dispatchEvent(new Event("kt:loaded"))),700)}catch(e){showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+e)}};
 // ---------- 1:1 chat ----------
 let lastTyping=0;
 window.sendMessage=function(){const input=$('msgInput');const text=input.value.trim();if(!text||!currentChat||!sock)return;

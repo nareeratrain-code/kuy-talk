@@ -1,4 +1,5 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<link rel="icon" type="image/svg+xml" href="/brand/logo-mark.svg"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#e3120b">
 <title>Kuy Talk – ปัดหาคู่ (คลาสสิก)</title>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -6,7 +7,7 @@
 :root{--grad:linear-gradient(135deg,#ffd000,#ff3b5c);--card:#1a1724;--card2:#241f33;--t3:#a09ab8}
 #app{width:100%;max-width:440px;min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#16121f,#0b0a10)}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px}
-.logo{font-weight:800;font-size:22px;background:var(--grad);-webkit-background-clip:text;color:transparent}.logo a{color:inherit;text-decoration:none}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:22px;background:var(--grad);-webkit-background-clip:text;color:transparent}.logo a{color:inherit;text-decoration:none}
 .coin{background:var(--card2);padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:600}
 main{flex:1;padding:0 16px 90px;overflow:auto}
 nav{position:fixed;bottom:0;width:100%;max-width:440px;display:flex;background:#15121ee8;backdrop-filter:blur(8px);border-top:1px solid #2a2440;z-index:5}
@@ -31,6 +32,7 @@ input,textarea,select{width:100%;padding:12px;border-radius:12px;border:1px soli
 small{color:var(--t3)}.emo{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.emo span{font-size:30px;cursor:pointer;padding:4px;border-radius:10px}.emo span.on{background:#ff3b5c55}
 .tabs{display:flex;gap:6px;overflow:auto;margin-bottom:8px}.tabs button{flex:none;border:0;padding:6px 12px;border-radius:20px;background:var(--card2);color:#ddd;font:inherit;font-size:12px;cursor:pointer}.tabs button.on{background:var(--grad);color:#fff}
 .hd{display:flex;align-items:center;gap:8px}.hd .sp{flex:1}.ic{background:var(--card2);border:0;border-radius:10px;padding:8px 10px;cursor:pointer;font-size:16px}
+.logo img{width:40px;height:40px;animation:ktb 2.4s ease-in-out infinite}@keyframes ktb{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-3deg)}}@media (prefers-reduced-motion:reduce){.logo img{animation:none}}
 </style></head><body><div id="app"></div>
 <script src="/socket.io/socket.io.js"></script><script src="/kt-call.js"></script><script>
 const $=s=>document.querySelector(s),A=$('#app');let T=localStorage.kt_token,ME,CFG,sock,tab='swipe',chatMid=null,chatOther=null,room=null,roomMsgs=[],counts={},region='all',rpeer=null,rstate='idle';
@@ -41,13 +43,13 @@ const isImg=a=>typeof a==='string'&&a.startsWith('data:image/');
 const pic=(a,st='')=>isImg(a)?`<div class="pic" style="background-image:url(${a});${st}"></div>`:`<div class="pic" style="${st}">${esc(a||'🙂')}</div>`;
 const tm=ts=>new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
 const J=o=>esc(JSON.stringify(o));
-function shell(body){A.innerHTML=`<header><div class="logo"><a href="/">Kuy Talk 💘</a></div><div class="coin" onclick="go('shop')">🪙 ${ME.coins}${ME.premium?' 👑':''}</div></header><main>${body}</main>
+function shell(body){A.innerHTML=`<header><div class="logo"><img src="/brand/logo-mark.svg" alt=""><a href="/">Kuy Talk</a></div><div class="coin" onclick="go('shop')">🪙 ${ME.coins}${ME.premium?' 👑':''}</div></header><main>${body}</main>
 <nav>${[['swipe','🔥','ปัด'],['random','🎲','สุ่มคุย'],['matches','💬','แชท'],['rooms','🏙️','ห้องจังหวัด'],['shop','💎','พรีเมียม']].map(([k,i,l])=>`<button class="${tab==k?'on':''}" onclick="go('${k}')"><b>${i}</b>${l}</button>`).join('')}</nav>`}
 async function refresh(){ME=await api('me')}
 function go(t){if(tab==='random'&&t!=='random'){sock.emit('rand:leave');rstate='idle'}if(tab==='rooms'&&t!=='rooms'&&room){sock.emit('room:leave');room=null}tab=t;chatMid=null;({swipe,random:randomV,matches,rooms:roomsV,shop})[t]()}
 // --- signup ---
 function signup(){let av='😎';const emos=['😎','🌸','🐱','🦊','🐼','🎮','🌈','⚡'];
-A.innerHTML=`<header><div class="logo">Kuy Talk 💘</div></header><main><div class="card"><h2>สร้างโปรไฟล์</h2><small>รับฟรี 50 เหรียญ 🎁 · บัญชีเดียวกับหน้าหลัก</small><br><br>
+A.innerHTML=`<header><div class="logo"><img src="/brand/logo-mark.svg" alt=""><span>Kuy Talk</span></div></header><main><div style="text-align:center;margin:6px 0 10px"><img src="/brand/logo.svg" alt="Kuy Talk" style="width:150px;height:150px"></div><div class="card"><h2>สร้างโปรไฟล์</h2><small>รับฟรี 50 เหรียญ 🎁 · บัญชีเดียวกับหน้าหลัก</small><br><br>
 ชื่อ<input id=n maxlength=30>อายุ (18+)<input id=a type=number min=18 max=120 value=20>เพศ<select id=g><option value=m>ชาย</option><option value=f>หญิง</option><option value=x>อื่นๆ</option></select>
 แนะนำตัว<textarea id=b rows=2 maxlength=200 placeholder="ชอบอะไร..."></textarea>รูปโปรไฟล์<div class=emo>${emos.map(e=>`<span>${e}</span>`).join('')}</div>
 <small>หรืออัปโหลดรูป</small><input id=f type=file accept="image/*"><button class=btn id=go>เริ่มเลย 🚀</button></div></main>`;

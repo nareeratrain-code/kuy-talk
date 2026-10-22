@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Kuy Talk">
+<style>
+.m{transform-box:fill-box;transform-origin:50% 100%;animation:bob 2.4s ease-in-out infinite}
+.cap{transform-box:fill-box;transform-origin:50% 90%;animation:wob 2.4s ease-in-out infinite}
+.eye{transform-box:fill-box;transform-origin:50% 50%;animation:blink 4s infinite}
+.bl{animation:blush 2.4s ease-in-out infinite}
+.sp{transform-box:fill-box;transform-origin:50% 50%;animation:tw 1.8s ease-in-out infinite}
+.sp2{animation-delay:.6s}.sp3{animation-delay:1.2s}
+.tx{transform-box:fill-box;transform-origin:50% 50%;animation:pop 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) scale(1,1)}45%{transform:translateY(-6px) scale(.98,1.03)}55%{transform:translateY(-6px) scale(.98,1.03)}80%{transform:translateY(0) scale(1.04,.96)}}
+@keyframes wob{0%,100%{transform:rotate(0)}30%{transform:rotate(-3deg)}70%{transform:rotate(3deg)}}
+@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(.1)}}
+@keyframes blush{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes tw{0%,100%{transform:scale(.3) rotate(0);opacity:0}50%{transform:scale(1) rotate(45deg);opacity:1}}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<defs><linearGradient id="stem" x1="0" x2="1"><stop offset="0" stop-color="#ece6d6"/><stop offset="1" stop-color="#c9c2ae"/></linearGradient>
+<radialGradient id="capg" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ff4a3d"/><stop offset=".7" stop-color="#e3120b"/><stop offset="1" stop-color="#b30d08"/></radialGradient></defs>
+<g class="m">
+ <path d="M58 92 Q50 150 64 158 Q100 170 136 158 Q150 150 142 92 Z" fill="url(#stem)" stroke="#1d1d1d" stroke-width="4" stroke-linejoin="round"/>
+ <path d="M70 150 Q100 162 130 150" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="4" stroke-linecap="round"/>
+ <g class="eye"><ellipse cx="84" cy="116" rx="5" ry="6.5" fill="#1d1d1d"/><circle cx="85.5" cy="114" r="1.8" fill="#fff"/></g>
+ <g class="eye"><ellipse cx="116" cy="116" rx="5" ry="6.5" fill="#1d1d1d"/><circle cx="117.5" cy="114" r="1.8" fill="#fff"/></g>
+ <ellipse class="bl" cx="72" cy="128" rx="8" ry="5" fill="#e0566b"/><ellipse class="bl" cx="128" cy="128" rx="8" ry="5" fill="#e0566b"/>
+ <path d="M92 128 Q100 140 108 128 Z" fill="#e8414f" stroke="#1d1d1d" stroke-width="2.5" stroke-linejoin="round"/>
+ <g class="cap"><path d="M22 92 Q18 52 52 30 Q100 2 148 30 Q182 52 178 92 Q170 104 100 102 Q30 104 22 92 Z" fill="url(#capg)" stroke="#1d1d1d" stroke-width="4.5" stroke-linejoin="round"/>
+  <g fill="#fbe3ea" stroke="#1d1d1d" stroke-width="2.5"><ellipse cx="62" cy="40" rx="13" ry="8" transform="rotate(-20 62 40)"/><ellipse cx="104" cy="24" rx="15" ry="6"/><ellipse cx="145" cy="44" rx="11" ry="9"/><ellipse cx="44" cy="72" rx="11" ry="13"/><ellipse cx="96" cy="58" rx="12" ry="11"/><ellipse cx="150" cy="80" rx="15" ry="13"/><ellipse cx="122" cy="62" rx="5" ry="4"/></g>
+  <path d="M40 54 Q48 38 64 30" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/></g>
+</g>
+<g fill="#ffd400"><path class="sp" d="M176 22 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/><path class="sp sp2" d="M20 120 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z"/><path class="sp sp3" d="M182 128 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/></g>
+<g class="tx"><text x="100" y="190" text-anchor="middle" font-family="'Arial Rounded MT Bold','Nunito','Prompt','Arial Black',sans-serif" font-weight="900" font-size="30" letter-spacing="1.5" fill="#ffd400" stroke="#1d1d1d" stroke-width="7" paint-order="stroke" stroke-linejoin="round">KUY TALK</text></g>
+</svg>
