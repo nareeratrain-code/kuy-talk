@@ -1,0 +1,10 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "kt_users", "fieldPath": "j", "indexes": [] },
+    { "collectionGroup": "kt_messages", "fieldPath": "j", "indexes": [] },
+    { "collectionGroup": "kt_rooms", "fieldPath": "j", "indexes": [] },
+    { "collectionGroup": "kt_moments", "fieldPath": "j", "indexes": [] },
+    { "collectionGroup": "kt_trafficLog", "fieldPath": "j", "indexes": [] }
+  ]
+}

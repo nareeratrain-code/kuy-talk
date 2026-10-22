@@ -28,18 +28,32 @@ if(card){const btn=card.querySelector('.ag-btn');const box=document.createElemen
  const prev=window.checkAge;window.checkAge=function(){if(!hasSession){const ok=$('kgAge').checked&&$('kgTerms').checked&&$('kgPriv').checked;if(!ok){$('ageError').textContent='⚠️ กรุณายืนยันอายุ 18+ และยอมรับข้อกำหนดกับนโยบายความเป็นส่วนตัว';return}
   window.KT_CONSENT={age18:true,terms:true,privacy:true,location:$('kgLoc').checked,marketing:$('kgMkt').checked}}
   return prev.apply(this,arguments)}}
-// ---------- OTP ----------
-let cdT=null;
+// ---------- OTP (Firebase Phone Auth when configured, else server OTP) ----------
+let cdT=null,FBS=null,CFG0=null;const FBV='13.1.0',GS='https://www.gstatic.com/firebasejs/'+FBV+'/';
+async function fbInit(){if(FBS)return FBS;CFG0=CFG0||await api('config');const c=CFG0.firebase;if(!c)return null;
+ const [A,m]=await Promise.all([import(GS+'firebase-app.js'),import(GS+'firebase-auth.js')]);const app=A.initializeApp(c,'kt');
+ if(c.appCheckSiteKey){try{const AC=await import(GS+'firebase-app-check.js');AC.initializeAppCheck(app,{provider:new AC.ReCaptchaV3Provider(c.appCheckSiteKey),isTokenAutoRefreshEnabled:true})}catch(e){console.warn('app check',e)}}
+ const auth=m.getAuth(app);auth.languageCode='th';if(c.authEmulator)m.connectAuthEmulator(auth,c.authEmulator,{disableWarnings:true});return FBS={m,auth,verifier:null,conf:null}}
+const fbErr=e=>({'auth/invalid-phone-number':'เบอร์มือถือไม่ถูกต้อง','auth/too-many-requests':'ขอรหัสถี่เกินไป กรุณาลองใหม่ภายหลัง','auth/invalid-verification-code':'รหัสไม่ถูกต้อง','auth/code-expired':'รหัสหมดอายุ กรุณาขอรหัสใหม่','auth/quota-exceeded':'ระบบส่ง SMS เกินโควตา กรุณาลองใหม่ภายหลัง','auth/operation-not-allowed':'ยังไม่เปิดใช้การเข้าสู่ระบบด้วยเบอร์โทร หรือภูมิภาคนี้ไม่ได้รับอนุญาต','auth/captcha-check-failed':'ตรวจสอบ reCAPTCHA ไม่ผ่าน ลองใหม่อีกครั้ง','auth/network-request-failed':'เครือข่ายขัดข้อง'})[e&&e.code]||(e&&e.message)||'ผิดพลาด';
+window.KTFB=()=>FBS;
 function otpSheet(link){sheet(`<h3>📱 ${link?'ผูกเบอร์โทรศัพท์':'เข้าสู่ระบบด้วยเบอร์โทร'}</h3><p class="ko-sub">รองรับเบอร์มือถือไทย (+66) เราจะส่งรหัส 6 หลักทาง SMS รหัสหมดอายุใน 5 นาที</p>
  <input class="kg-in" id="kgTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="08x-xxx-xxxx" maxlength="15"><button class="ko-btn" id="kgSend">ส่งรหัส OTP</button>
  <div id="kgStep2" style="display:none"><div id="kgDev"></div><input class="kg-in" id="kgCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="รหัส 6 หลัก"><button class="ko-btn" id="kgVerify">ยืนยันรหัส</button><button class="ko-link" id="kgResend" disabled>ส่งรหัสอีกครั้ง</button></div>
- <p class="ag-error" id="kgErr" style="min-height:16px"></p><p class="ko-sub">ห้ามบอกรหัส OTP กับผู้อื่น ทีมงาน Kuy Talk จะไม่ขอรหัสจากคุณ</p>${link?back:''}`);
+ <p class="ag-error" id="kgErr" style="min-height:16px"></p><div id="kgRc"></div><p class="ko-sub">ห้ามบอกรหัส OTP กับผู้อื่น ทีมงาน Kuy Talk จะไม่ขอรหัสจากคุณ</p>${link?back:''}`);
  const tel=()=>$('kgTel').value.replace(/[\s-]/g,''),er=t=>{$('kgErr').textContent=t||''};
  const send=async()=>{er();if(!/^(?:\+?66|0)[689]\d{8}$/.test(tel()))return er('เบอร์มือถือไทยไม่ถูกต้อง (เช่น 0812345678)');
+  const fb=await fbInit().catch(e=>{console.warn('firebase unavailable, using server OTP',e&&e.code||e);return null});
+  if(fb){try{if(!fb.verifier)fb.verifier=new fb.m.RecaptchaVerifier(fb.auth,'kgRc',{size:'invisible'});const d=tel().replace(/^(?:\+?66|0)/,'');
+    fb.conf=await fb.m.signInWithPhoneNumber(fb.auth,'+66'+d,fb.verifier);$('kgStep2').style.display='block';$('kgDev').innerHTML=`<p class="kg-ok">ส่งรหัสไปที่ +66 ${d[0]}x-xxx-${esc(d.slice(-4))} แล้ว</p>`;$('kgCode').focus();cool(60)}
+   catch(e){er(fbErr(e));try{fb.verifier&&fb.verifier.clear()}catch(x){}fb.verifier=null}return}
   try{const r=await api('otp/request',{phone:tel()});$('kgStep2').style.display='block';$('kgDev').innerHTML=r.devCode?`<div class="kg-dev">🧪 <b>โหมดทดสอบ</b> — ${esc(r.devNote||'')}<br>รหัสของคุณ: <b>${esc(r.devCode)}</b></div>`:`<p class="kg-ok">ส่งรหัสไปที่ ${esc(r.phone)} แล้ว</p>`;$('kgCode').focus();
-   let s=r.cooldown||60;const b=$('kgResend');b.disabled=true;clearInterval(cdT);const tick=()=>{if(!$('kgResend'))return clearInterval(cdT);b.textContent=s>0?`ส่งรหัสอีกครั้งใน ${s} วิ`:'ส่งรหัสอีกครั้ง';b.disabled=s>0;s--;if(s<-1)clearInterval(cdT)};tick();cdT=setInterval(tick,1000)}catch(e){er(e.message)}};
+   cool(r.cooldown||60)}catch(e){er(e.message)}};
+ const cool=n=>{let s=n;const b=$('kgResend');b.disabled=true;clearInterval(cdT);const tick=()=>{if(!$('kgResend'))return clearInterval(cdT);b.textContent=s>0?`ส่งรหัสอีกครั้งใน ${s} วิ`:'ส่งรหัสอีกครั้ง';b.disabled=s>0;s--;if(s<-1)clearInterval(cdT)};tick();cdT=setInterval(tick,1000)};
  $('kgSend').onclick=send;$('kgResend').onclick=send;
- $('kgVerify').onclick=async()=>{er();try{const r=await api('otp/verify',{phone:tel(),code:$('kgCode').value.trim(),link:!!link});
+ $('kgVerify').onclick=async()=>{er();try{const code=$('kgCode').value.trim();let r;const fb=FBS;
+  if(fb&&fb.conf){if(!/^\d{6}$/.test(code))return er('กรุณากรอกรหัส 6 หลัก');let cred;try{cred=await fb.conf.confirm(code)}catch(e){return er(fbErr(e))}
+   const idToken=await cred.user.getIdToken();try{r=await api('firebase/verify',{idToken,link:!!link})}finally{fb.m.signOut(fb.auth).catch(()=>{})}}
+  else r=await api('otp/verify',{phone:tel(),code,link:!!link});
   if(link){K().setMe(r.me||r);toast('✔ ผูกเบอร์แล้ว');return koPhone()}
   if(r.token){K().setToken?K().setToken(r.token):localStorage.setItem('kt_token',r.token);hasSession=true;koClose();$('kgCons').innerHTML='<p class="kg-ok">✔ เข้าสู่ระบบด้วยเบอร์โทรแล้ว — กรอกวันเกิดเพื่อเข้าใช้งาน</p>';$('kgPhoneBtn').style.display='none'}
   else if(r.phoneTicket){window.KT_PTICKET=r.phoneTicket;koClose();$('kgPhoneOk').innerHTML='<p class="kg-ok">✔ ยืนยันเบอร์แล้ว (บัญชีใหม่) — กรอกวันเกิดและยอมรับเงื่อนไขด้านบนเพื่อสมัคร</p>';$('kgPhoneBtn').style.display='none'}}catch(e){er(e.message)}}}

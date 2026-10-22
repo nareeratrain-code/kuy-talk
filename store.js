@@ -5,8 +5,9 @@ const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[],sessions:{},consents:[],tickets:[],dataRequests:[],trafficLog:[]};
 const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false};
 const h=s=>crypto.createHash('sha1').update(s).digest('base64');
-async function init(){const URL=process.env.DATABASE_URL;
- if(URL){const {Pool}=require('pg');const ssl=/sslmode=disable|localhost|127\.0\.0\.1/.test(URL)?false:{rejectUnauthorized:false};
+async function init(){const URL=process.env.DATABASE_URL;const KIND=(process.env.STORAGE||'').toLowerCase();
+ if(KIND==='firestore'){await require('./store-firestore').init(S,blank)}
+ else if(URL&&KIND!=='json'){const {Pool}=require('pg');const ssl=/sslmode=disable|localhost|127\.0\.0\.1/.test(URL)?false:{rejectUnauthorized:false};
   const pool=S.pool=new Pool({connectionString:URL,ssl,max:5});
   await pool.query(`create table if not exists kt_users(id text primary key,data jsonb not null,lat double precision,lng double precision,updated timestamptz default now());
    create index if not exists kt_users_latlng on kt_users(lat,lng);

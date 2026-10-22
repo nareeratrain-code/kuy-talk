@@ -19,6 +19,13 @@ services:
         value: console
       # thaibulksms: THAIBULKSMS_API_KEY, THAIBULKSMS_API_SECRET, THAIBULKSMS_SENDER (approved sender name)
       # twilio:      TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM (or TWILIO_MESSAGING_SERVICE_SID)
+      - key: FIREBASE_WEB_CONFIG       # one-line JSON {"apiKey","authDomain","projectId","appId","messagingSenderId"} -> enables Firebase Phone Auth
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT  # service-account key JSON (raw or base64)
+        sync: false
+      # - key: STORAGE                 # firestore | postgres-by-DATABASE_URL | json
+      #   value: firestore
+      # - key: FIREBASE_APPCHECK_SITE_KEY  # optional reCAPTCHA v3 site key for App Check
       # - key: DATA_DIR        # set to the disk mount path if you attach a disk (paid plan)
       #   value: /var/data
     # disk:                    # paid plans only – persistent data

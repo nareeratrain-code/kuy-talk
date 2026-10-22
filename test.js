@@ -156,5 +156,17 @@ ok((await p('support',{topic:'bug',message:'x'},t0)).status===400,'support valid
 const ov3=await (await fetch(B+'/api/admin/overview',{headers:H})).json();ok(ov3.tickets.some(t=>t.uid===m0.id)&&ov3.dataRequests.some(r=>r.id===dr.id)&&ov3.trafficLog>0&&ov3.consentLog>0,'admin sees tickets, data requests, consent & traffic logs');
 const dd=await p('account/delete',{},v6.token);ok(dd.ok&&(await p('me',null,t0)).status===401,'account delete revokes all sessions');
 await sl(o6.cooldown*1000+200);const o7=await p('otp/request',{phone:ph3});ok((await p('otp/verify',{phone:ph3,code:o7.devCode})).needSignup,'deleted account frees phone number');
+// ---------- Firebase Phone Auth (auth emulator) — runs when FB_AUTH_EMU=host:port ----------
+if(process.env.FB_AUTH_EMU){const E='http://'+process.env.FB_AUTH_EMU,PJ=process.env.FIREBASE_PROJECT_ID||'demo-kuytalk',J=(u,b)=>fetch(u,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b&&JSON.stringify(b)}).then(r=>r.json());
+ const fbTok=async ph=>{const s=await J(E+'/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=fake',{phoneNumber:ph,recaptchaToken:'x'});const codes=(await J(E+'/emulator/v1/projects/'+PJ+'/verificationCodes')).verificationCodes;const c=codes.filter(x=>x.sessionInfo===s.sessionInfo).pop();return (await J(E+'/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=fake',{sessionInfo:s.sessionInfo,code:c.code})).idToken};
+ const cf=await p('config');ok(cf.firebase&&cf.firebase.apiKey&&!JSON.stringify(cf).includes('private_key'),'config exposes only public Firebase web config');
+ const fph='+66'+(9e8+Math.floor(Math.random()*9e7));const ft=await fbTok(fph);ok((await p('firebase/verify',{idToken:'garbage'})).status===401,'firebase: forged ID token rejected');
+ const fv=await p('firebase/verify',{idToken:ft});ok(fv.needSignup&&fv.phoneTicket,'firebase: new phone → signup ticket');
+ const fs1=await p('signup',{name:'FbUser'+RUN,age:24,gender:'f',phoneTicket:fv.phoneTicket});const fm=await p('me',null,fs1.token);ok(fm.phone&&fm.phone.endsWith(fph.slice(-4)),'firebase: signup links phone');
+ const fv2=await p('firebase/verify',{idToken:await fbTok(fph)});ok(fv2.token&&(await p('me',null,fv2.token)).id===fm.id,'firebase: same phone logs in to same account');
+ const other=(await p('signup',{name:'FbLink'+RUN,age:30,gender:'m'})).token;ok((await p('firebase/verify',{idToken:await fbTok(fph),link:true},other)).status===409,'firebase: link refuses phone owned by other account');
+ const fph2='+66'+(8e8+Math.floor(Math.random()*9e7));const lk=await p('firebase/verify',{idToken:await fbTok(fph2),link:true},other);ok(lk.linked,'firebase: link phone to existing account');
+ const us=await J(E+'/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=fake',{phoneNumber:'+14155550100',recaptchaToken:'x'});
+ if(us.sessionInfo){const c=(await J(E+'/emulator/v1/projects/'+PJ+'/verificationCodes')).verificationCodes.filter(x=>x.sessionInfo===us.sessionInfo).pop();const ut=(await J(E+'/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=fake',{sessionInfo:us.sessionInfo,code:c.code})).idToken;ok((await p('firebase/verify',{idToken:ut})).status===400,'firebase: non-Thai number rejected')}}
 }
 console.log(`\n${pass} passed, ${fail} failed`);process.exit(fail?1:0)})().catch(e=>{console.error('❌',e.message);process.exit(1)});

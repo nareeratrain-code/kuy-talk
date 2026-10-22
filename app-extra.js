@@ -56,9 +56,21 @@ app.post('/api/otp/verify',(req,res)=>{const phone=normPhone(req.body&&req.body.
  if(!o||o.exp<Date.now()){OTP.delete(phone);return res.status(400).json({error:'รหัสหมดอายุหรือยังไม่ได้ขอรหัส'})}
  if(o.tries>=MAX_TRIES){OTP.delete(phone);return res.status(429).json({error:'กรอกรหัสผิดเกินกำหนด กรุณาขอรหัสใหม่'})}
  if(!crypto.timingSafeEqual(o.h,hmac(phone,code))){o.tries++;const left=MAX_TRIES-o.tries;if(left<=0)OTP.delete(phone);return res.status(400).json({error:'รหัสไม่ถูกต้อง'+(left>0?` (เหลือ ${left} ครั้ง)`:' — กรุณาขอรหัสใหม่'),left})}
- OTP.delete(phone);const cur=userOfTok(tokOf(req)),owner=userByPhone(phone);
+ OTP.delete(phone);phoneVerified(req,res,phone,'otp')});
+// shared: a phone number has been proven (server OTP or Firebase ID token) → link / login / signup ticket
+function phoneVerified(req,res,phone,via){const cur=userOfTok(tokOf(req)),owner=userByPhone(phone);
  if(req.body.link){if(!cur||cur.bot)return res.status(401).json({error:'กรุณาเข้าสู่ระบบก่อน'});if(owner&&owner.id!==cur.id)return res.status(409).json({error:'เบอร์นี้ผูกกับบัญชีอื่นแล้ว'});cur.phone=phone;tlog('phone_link',req,cur.id);save();return res.json({linked:true,me:me(cur)})}
- if(owner){if(owner.banned)return res.status(403).json({error:'บัญชีนี้ถูกระงับ'});tlog('login_otp',req,owner.id);return res.json({token:newSession(owner.id,req,res),isNew:false})}
- const ticket=crypto.randomBytes(24).toString('hex');TICKETS.set(ticket,{phone,exp:Date.now()+15*60000});res.json({needSignup:true,phoneTicket:ticket})});
+ if(owner){if(owner.banned)return res.status(403).json({error:'บัญชีนี้ถูกระงับ'});tlog('login_'+via,req,owner.id);return res.json({token:newSession(owner.id,req,res),isNew:false})}
+ const ticket=crypto.randomBytes(24).toString('hex');TICKETS.set(ticket,{phone,exp:Date.now()+15*60000});res.json({needSignup:true,phoneTicket:ticket})}
+// ---------- Firebase Phone Auth (client SDK sends SMS; we verify the ID token) ----------
+app.post('/api/firebase/verify',async(req,res)=>{if(!FBON())return res.status(404).json({error:'Firebase ไม่ได้เปิดใช้งาน'});
+ if(limited('fbv-ip:'+req.ip,30,600000))return res.status(429).json({error:'ลองถี่เกินไป กรุณารอสักครู่'});
+ const tok=String(req.body&&req.body.idToken||'');if(!tok||tok.length>5000)return res.status(400).json({error:'ไม่มีโทเค็น'});
+ let d;try{d=await require('firebase-admin/auth').getAuth(FB.admin()).verifyIdToken(tok,true)}catch(e){return res.status(401).json({error:'ยืนยันตัวตนกับ Firebase ไม่สำเร็จ'})}
+ if(Date.now()/1000-(d.auth_time||0)>600)return res.status(401).json({error:'การยืนยันหมดอายุ กรุณาขอรหัสใหม่'});
+ const phone=normPhone(d.phone_number);if(!phone)return res.status(400).json({error:'รองรับเฉพาะเบอร์มือถือไทย (+66)'});
+ phoneVerified(req,res,phone,'firebase')});
 app.post('/api/phone/unlink',auth,(req,res)=>{delete req.u.phone;save();res.json(me(req.u))});
 X.normPhone=normPhone;};
+const FB=require('./firebase');const FBON=()=>!!(FB.webConfig()&&FB.configured());
+module.exports.firebaseClientConfig=()=>{if(!FBON())return null;const c=FB.webConfig();if(process.env.FIREBASE_AUTH_EMULATOR_HOST)c.authEmulator='http://'+process.env.FIREBASE_AUTH_EMULATOR_HOST;return c};
