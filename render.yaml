@@ -11,6 +11,14 @@ services:
         value: "20"
       - key: ADMIN_PASSWORD
         sync: false
+      - key: DATABASE_URL        # Postgres (Neon free / Render Postgres). Unset = JSON file (lost on free-plan redeploys!)
+        sync: false
+      - key: OTP_SECRET
+        generateValue: true
+      - key: SMS_PROVIDER        # thaibulksms | twilio | console (console = on-screen test codes)
+        value: console
+      # thaibulksms: THAIBULKSMS_API_KEY, THAIBULKSMS_API_SECRET, THAIBULKSMS_SENDER (approved sender name)
+      # twilio:      TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM (or TWILIO_MESSAGING_SERVICE_SID)
       # - key: DATA_DIR        # set to the disk mount path if you attach a disk (paid plan)
       #   value: /var/data
     # disk:                    # paid plans only – persistent data

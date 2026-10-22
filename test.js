@@ -1,6 +1,6 @@
 // Kuy Talk integration test: node test.js  (server must be running on :3000)
 const {io}=require('socket.io-client');const B=process.env.BASE||'http://localhost:3000';
-const p=(u,b,t,m)=>fetch(B+'/api/'+u,{method:m||(b?'POST':'GET'),headers:{'content-type':'application/json','x-token':t||''},body:b&&JSON.stringify(b)}).then(async r=>{const j=await r.json().catch(()=>({}));return Array.isArray(j)?j:{status:r.status,...j}});
+const p=(u,b,t,m)=>{if(u==='signup'&&b&&!b.consent)b={...b,consent:{terms:true,privacy:true,age18:true}};return fetch(B+'/api/'+u,{method:m||(b?'POST':'GET'),headers:{'content-type':'application/json','x-token':t||''},body:b&&JSON.stringify(b)}).then(async r=>{const j=await r.json().catch(()=>({}));return Array.isArray(j)?j:{status:r.status,...j}})};
 const wait=(s,ev,f=()=>true,ms=6000)=>new Promise((res,rej)=>{const t=setTimeout(()=>rej(new Error('timeout '+ev)),ms);const h=d=>{if(f(d)){clearTimeout(t);s.off(ev,h);res(d)}};s.on(ev,h)});
 let pass=0,fail=0;const ok=(c,n)=>{c?pass++:fail++;console.log((c?'✅':'❌')+' '+n)};
 (async()=>{
@@ -109,4 +109,52 @@ await p('verify',{selfie:PNG},c);const ov2=await (await fetch(B+'/api/admin/over
 await fetch(B+'/api/admin/verify',{method:'POST',headers:{...H,'content-type':'application/json'},body:JSON.stringify({id:mc.id,approve:true})});ok((await p('me',null,c)).verified,'admin approves → verified badge');
 ok((await p('me/stats',null,c)).likesReceived>=1,'profile stats');
 ok((await p('account/delete',{},eT)).ok&&(await p('me',null,eT)).status===401,'account delete');
+
+// ---------- sessions / PDPA / GPS / OTP ----------
+{const RUN=Date.now()%1e6;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+ok((await p('signup',{name:'NoC',age:22,consent:{terms:true}})).status===400,'signup requires terms+privacy+18+ consent');
+const r0=await fetch(B+'/api/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Ck',age:25,consent:{terms:true,privacy:true,age18:true,marketing:true}})});const ck=r0.headers.get('set-cookie')||'';const t0=(await r0.json()).token;
+ok(/kt_s=/.test(ck)&&/HttpOnly/i.test(ck),'session token set as httpOnly cookie');
+const m0=await p('me',null,t0);ok(m0.id!==t0&&(await p('me',null,m0.id)).status===401,'public user id is not a session token');
+ok((await fetch(B+'/api/me',{headers:{cookie:'kt_s='+t0}})).status===200,'cookie session authenticates');
+const cl=await p('consent',null,t0);ok(['terms','privacy','age18','location','marketing'].every(k=>cl.log.some(x=>x.type===k))&&cl.current.marketing===true&&cl.current.location===false,'consent log records separate location & marketing choices');
+await p('consent',{type:'marketing',granted:false},t0);ok((await p('consent',null,t0)).log.filter(x=>x.type==='marketing').length===2,'withdraw marketing consent logged');
+ok((await p('location',{lat:13.7563,lng:100.5018},t0)).status===403,'location blocked without location consent');
+const mk=async(n,lat,lng)=>{const t=(await p('signup',{name:n,age:24,consent:{terms:true,privacy:true,age18:true,location:true}})).token;const m=await p('location',{lat,lng},t);return{t,m}};
+const L1=await mk('GeoBKK'+RUN,13.7583,100.4961),L2=await mk('GeoNon'+RUN,13.8621,100.5144),L3=await mk('GeoCM'+RUN,18.7883,98.9853),L4=await mk('GeoNear'+RUN,13.7590,100.4972);
+ok(L1.m.geo&&L1.m.geo.district==='พระนคร'&&L1.m.geo.province==='bangkok'&&L1.m.province==='bangkok','reverse geocode offline → เขตพระนคร, กรุงเทพฯ');
+ok(L3.m.geo.provinceName==='เชียงใหม่','reverse geocode → เชียงใหม่');
+const pp=await p('people',null,L1.t),raw=JSON.stringify(pp);const i2=pp.findIndex(x=>x.name==='GeoNon'+RUN),i3=pp.findIndex(x=>x.name==='GeoCM'+RUN),x2=pp[i2],x4=pp.find(x=>x.name==='GeoNear'+RUN);
+ok(!/"lat"|"lng"|13\.75|100\.49/.test(raw),'no coordinates exposed to other users');
+ok(i2>=0&&i3>i2&&Math.abs(x2.dist-11.8)<1.5&&Math.abs(pp[i3].dist-582)<10,'nearby ordered by real haversine distance ('+(x2&&x2.dist)+' km, '+(pp[i3]&&pp[i3].dist)+' km)');
+ok(x4&&/^ในเขต พระนคร$/.test(x4.distLabel),'same district label "'+(x4&&x4.distLabel)+'"');
+ok(/km$/.test(x2.distLabel),'distance label "'+x2.distLabel+'"');
+await p('filters',{maxDist:25},L1.t);const cd=await p('cards',null,L1.t);ok(cd.some(x=>x.name==='GeoNon'+RUN)&&!cd.some(x=>x.name==='GeoCM'+RUN)&&cd.every(x=>x.dist==null||x.dist<=25),'distance filter 25 km (spatial index)');
+await p('filters',{maxDist:0},L1.t);ok((await p('cards',null,L1.t)).some(x=>x.name==='GeoCM'+RUN),'ทั้งประเทศ shows nationwide');
+await p('prefs',{hideDist:true},L2.t);ok((await p('people',null,L1.t)).find(x=>x.name==='GeoNon'+RUN).distLabel==='ซ่อนระยะทาง','hide distance setting');
+const pz=await p('location/pause',{paused:true},L1.t);ok(pz.locSource==='province'&&pz.geo.paused,'pause location → province fallback');
+const dn=await mk('NoGPS'+RUN,0,0);await p('location',{},dn.t);await p('profile',{province:'phuket'},dn.t);ok((await p('people',null,dn.t)).find(x=>x.name==='GeoCM'+RUN).dist>500,'permission denied → province centroid distance');
+// OTP
+ok((await p('otp/request',{phone:'12345'})).status===400&&(await p('otp/request',{phone:'0212345678'})).status===400,'rejects invalid / non-mobile Thai numbers');
+const ph='08'+String(Date.now()).slice(-8);const o1=await p('otp/request',{phone:ph});ok(o1.ok&&/^\d{6}$/.test(o1.devCode)&&o1.expiresIn===300,'OTP 6 digits, 5-min expiry, dev code only in console mode');
+const o2=await p('otp/request',{phone:'+66'+ph.slice(1)});ok(o2.status===429&&o2.retryIn>0,'resend cooldown (+66 normalised to same number)');
+const bad=await p('otp/verify',{phone:ph,code:o1.devCode==='000000'?'111111':'000000'});ok(bad.status===400&&bad.left===4,'wrong code counts attempts');
+const v1=await p('otp/verify',{phone:ph,code:o1.devCode});ok(v1.needSignup&&v1.phoneTicket,'new number → signup ticket');
+ok((await p('otp/verify',{phone:ph,code:o1.devCode})).status===400,'OTP single-use');
+const sp=await p('signup',{name:'PhoneU',age:23,phoneTicket:v1.phoneTicket});const ms=await p('me',null,sp.token);ok(/^\+66 \dx-xxx-\d{4}$/.test(ms.phone),'signup with verified phone (masked '+ms.phone+')');
+await sl(o1.cooldown*1000+200);const o3=await p('otp/request',{phone:ph});const v3=await p('otp/verify',{phone:ph,code:o3.devCode});ok(v3.token&&(await p('me',null,v3.token)).id===ms.id,'OTP login returns session for existing phone account');
+ok((await p('logout',{},v3.token)).ok&&(await p('me',null,v3.token)).status===401,'logout revokes session');
+const ph2='09'+String(Date.now()+7).slice(-8);const o4=await p('otp/request',{phone:ph2});let last;for(let k=0;k<5;k++)last=await p('otp/verify',{phone:ph2,code:o4.devCode==='999999'?'888888':'999999'});
+ok((await p('otp/verify',{phone:ph2,code:o4.devCode})).status===400,'attempt limit (5) invalidates OTP');
+const ph3='06'+String(Date.now()+9).slice(-8);const o5=await p('otp/request',{phone:ph3});const lk=await p('otp/verify',{phone:ph3,code:o5.devCode,link:true},t0);ok(lk.linked&&lk.me.phone,'link existing token account to phone');
+await sl(o5.cooldown*1000+200);const o6=await p('otp/request',{phone:ph3});const v6=await p('otp/verify',{phone:ph3,code:o6.devCode});ok(v6.token&&(await p('me',null,v6.token)).id===m0.id,'login by linked phone → same account');
+// data rights, support, admin
+const ex=await fetch(B+'/api/data/export',{headers:{'x-token':t0}});const exj=await ex.json();ok(/attachment/.test(ex.headers.get('content-disposition')||'')&&exj.profile.name==='Ck'&&!exj.profile.geoSalt&&exj.consents.length>=5,'PDPA data export (JSON download)');
+const dr=await p('data/request',{type:'correct',detail:'ขอแก้ชื่อ'},t0);ok(dr.ok&&dr.due>Date.now(),'data subject request saved (30-day due)');
+ok((await p('support',{topic:'payment',email:'a@b.co',message:'ทดสอบติดต่อฝ่ายบริการลูกค้า'},t0)).ok,'customer service ticket');
+ok((await p('support',{topic:'bug',message:'x'},t0)).status===400,'support validates message');
+const ov3=await (await fetch(B+'/api/admin/overview',{headers:H})).json();ok(ov3.tickets.some(t=>t.uid===m0.id)&&ov3.dataRequests.some(r=>r.id===dr.id)&&ov3.trafficLog>0&&ov3.consentLog>0,'admin sees tickets, data requests, consent & traffic logs');
+const dd=await p('account/delete',{},v6.token);ok(dd.ok&&(await p('me',null,t0)).status===401,'account delete revokes all sessions');
+await sl(o6.cooldown*1000+200);const o7=await p('otp/request',{phone:ph3});ok((await p('otp/verify',{phone:ph3,code:o7.devCode})).needSignup,'deleted account frees phone number');
+}
 console.log(`\n${pass} passed, ${fail} failed`);process.exit(fail?1:0)})().catch(e=>{console.error('❌',e.message);process.exit(1)});

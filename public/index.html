@@ -1303,7 +1303,7 @@ html, body { height: 100%; overflow: hidden; background: var(--dark); color: var
         <h2 data-i18n="panel.nearby_title">คนใกล้เคียง</h2>
         <div class="search-box"><span style="font-size:13px;opacity:.5">🔍</span><input placeholder="ค้นหา..." data-i18n-ph="panel.search_generic"></div>
       </div>
-      <div style="padding:0 12px 8px;font-size:12px;color:var(--text3)">พบ <b style="color:var(--red)">24</b> คนในรัศมี 15 กม.</div>
+      <div class="kg-cnt" style="padding:0 12px 8px;font-size:12px;color:var(--text3)">กำลังค้นหาคนใกล้คุณ…</div>
       <div class="scroll-list" id="nearbyList"></div>
     </div>
     <div id="panelEmpty" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text3);">
@@ -1392,7 +1392,7 @@ html, body { height: 100%; overflow: hidden; background: var(--dark); color: var
     <div id="pageNearby" class="page" style="overflow:hidden;flex-direction:column">
       <div style="padding:20px 20px 0;flex-shrink:0">
         <h1 style="font-size:22px;font-weight:900;margin-bottom:4px" data-i18n="page.nearby_title">คนใกล้เคียง</h1>
-        <p style="font-size:13px;color:var(--text3);margin-bottom:14px">พบ 24 คนในรัศมี 15 กม.</p>
+        <p class="kg-cnt" style="font-size:13px;color:var(--text3);margin-bottom:6px">กำลังค้นหาคนใกล้คุณ…</p><div id="kgSteps" class="kg-steps"></div>
         <div class="stats-bar" style="padding:0 0 16px">
           <div class="stat-pill">
             <div class="stat-pill-top"><span class="stat-pill-label">❤️ กดหัวใจ</span><span class="stat-pill-val" id="likeLabel">45/100</span></div>
@@ -3643,9 +3643,9 @@ function buildNearbyGrid() {
           <div class="uc-locked">
             <div style="font-size:28px">🔒</div>
             <div style="font-weight:800;color:white;font-size:15px">Premium Only</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px">อยู่ใกล้ ${u.dist} กม.</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px">${u.dist}</div>
           </div>
-          <div class="uc-dist"><em class="ei" style="margin-right:4px">📍</em>${u.dist} กม.</div>
+          <div class="uc-dist"><em class="ei" style="margin-right:4px">📍</em>${u.dist}</div>
           <div class="uc-badge" style="background:var(--grad)">🔥 ใกล้มาก!</div>
         </div>
         <div class="uc-body">
@@ -3662,7 +3662,7 @@ function buildNearbyGrid() {
         <div class="uc-photo" style="background:${u.grad}">
           <div class="uc-photo-letter">${u.letter}</div>
           <div class="uc-overlay"></div>
-          <div class="uc-dist"><em class="ei" style="margin-right:4px">📍</em>${u.dist} กม.</div>
+          <div class="uc-dist"><em class="ei" style="margin-right:4px">📍</em>${u.dist}</div>
           ${u.badge ? `<div class="uc-badge" style="background:${u.badgeColor}">${u.badge}</div>` : ''}
         </div>
         <div class="uc-body">
@@ -3713,7 +3713,7 @@ function openProfileDrawer(id) {
   document.getElementById('pdPhotoLetter').textContent = u.letter;
   document.getElementById('pdName').textContent = u.name;
   document.getElementById('pdAge').textContent = `${u.age} ปี`;
-  document.getElementById('pdDist').innerHTML = `📍 ${u.dist} กม. · ออนไลน์เมื่อ 10 นาทีที่แล้ว`;
+  document.getElementById('pdDist').innerHTML = `📍 ${u.dist} · ออนไลน์เมื่อ 10 นาทีที่แล้ว`;
   document.getElementById('pdAbout').textContent = u.about;
 
   const tagsEl = document.getElementById('pdTags');
@@ -5457,5 +5457,6 @@ window.addEventListener('offline', () => showToast('⚠️ ขาดการเ
 <script src="/kt-mobile.js"></script>
 <script src="/kt-brand.js"></script>
 <script src="/kt-ui.js"></script>
+<script src="/kt-geo.js"></script>
 </body>
 </html>

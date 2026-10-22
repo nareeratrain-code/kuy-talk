@@ -10,7 +10,7 @@ const pics=u=>{const p=(u.photos||[]).slice();if(!p.length&&isImg(u.avatar))p.pu
 const avEl=(u,cls='')=>isImg(u.avatar)?`<div class="ko-av ${cls}" style="background-image:url('${esc(u.avatar)}')"></div>`:`<div class="ko-av ko-av-e ${cls}" style="background:${gr(u.id)}">${esc(u.avatar||'🙂')}</div>`;
 const vb=u=>u.official?'<span class="kt-vb kt-off" title="บัญชีทางการ">✔</span>':u.verified?'<span class="kt-vb" title="ยืนยันตัวตนแล้ว">✔</span>':'';
 const crown=u=>u.premium?'<span title="Premium">👑</span>':'';
-const chips=u=>[u.zodiac&&`<span class="ko-chip">${esc(u.zodiac.sym)} ${esc(u.zodiac.name)}</span>`,u.provinceName&&`<span class="ko-chip">📍 ${esc(u.provinceName)}</span>`,u.dist!=null&&`<span class="ko-chip">🧭 ${u.dist} กม.</span>`,...(u.badges||[]).map(b=>`<span class="ko-chip ko-badge">${b==='ตอบไว'?'⚡':'💬'} ${esc(b)}</span>`)].filter(Boolean).join('');
+const chips=u=>[u.zodiac&&`<span class="ko-chip">${esc(u.zodiac.sym)} ${esc(u.zodiac.name)}</span>`,u.provinceName&&`<span class="ko-chip">📍 ${esc(u.provinceName)}</span>`,(u.distLabel||u.dist!=null)&&`<span class="ko-chip">🧭 ${esc(u.distLabel||u.dist+' km')}</span>`,...(u.badges||[]).map(b=>`<span class="ko-chip ko-badge">${b==='ตอบไว'?'⚡':'💬'} ${esc(b)}</span>`)].filter(Boolean).join('');
 let DECK=[],SHOP=null,ME=()=>K().me();
 const setMe=m=>{K().setMe(m);renderTurboBtn()};
 function prem(msg){sheet(`<div class="ko-up"><div class="ko-up-ic">👑</div><h3>${esc(msg)}</h3><p>Premium ปลดล็อกการดูคนที่ไลก์คุณ ผู้เยี่ยมชม ย้อนการปัด สถานะอ่านแล้ว ยกเลิกแมตช์ Crush ฟรีทุกวัน และ Turbo ฟรีทุกเดือน</p><button class="ko-btn" onclick="koGoSub()">ดูแพ็กเกจ Premium</button></div>`)}
@@ -76,7 +76,7 @@ window.koFilters=function(){const f=ME().filters||{},P=(K().cfg()||{}).provinces
  sheet(`<h3>⚙️ ตัวกรอง</h3><label>แสดง</label><div class="ko-seg" id="koFg">${[['','ทุกคน'],['f','ผู้หญิง'],['m','ผู้ชาย']].map(([v,t])=>`<button data-v="${v}" class="${(f.gender||'')===v?'on':''}">${t}</button>`).join('')}</div>
  <label>ช่วงอายุ</label><div class="ko-row"><select id="koAmin">${o('',f.ageMin)}ไม่ระบุ</option>${ages.map(a=>o(a,f.ageMin)+a+'</option>').join('')}</select><span>–</span><select id="koAmax">${o('',f.ageMax)}ไม่ระบุ</option>${ages.map(a=>o(a,f.ageMax)+a+'</option>').join('')}</select></div>
  <label>จังหวัด</label><select id="koFp">${o('',f.province)}ทุกจังหวัด</option>${P.map(p=>o(p.id,f.province)+esc(p.th)+'</option>').join('')}</select>
- <label>ระยะทาง (โดยประมาณ)</label><select id="koFd">${[['','ไม่จำกัด'],[10,'10 กม.'],[50,'50 กม.'],[100,'100 กม.'],[300,'300 กม.']].map(([v,t])=>o(v,f.maxDist)+t+'</option>').join('')}</select>
+ <label>ระยะทาง (โดยประมาณ)</label><select id="koFd">${[['','ทั้งประเทศ'],[1,'1 km'],[5,'5 km'],[10,'10 km'],[25,'25 km'],[50,'50 km'],[100,'100 km']].map(([v,t])=>o(v,f.maxDist)+t+'</option>').join('')}</select>
  <button class="ko-btn" id="koFgo">บันทึกตัวกรอง</button><button class="ko-link" id="koFreset">ล้างตัวกรอง</button>`);
  document.querySelectorAll('#koFg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#koFg button').forEach(x=>x.classList.remove('on'));b.classList.add('on')});
  const go=async body=>{try{setMe(await A('filters',body));closeSheet();if(currentPage==='deck')loadDeck();toast('บันทึกตัวกรองแล้ว')}catch(e){err(e)}};

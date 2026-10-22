@@ -20,7 +20,7 @@ function updateLikeBar(){if(!ME)return;const used=ME.swipesUsed||0,f=ME.free;con
 async function refresh(){ME=await api('me');remember(ME);updateLikeBar()}
 async function ensureAccount(age){if(T){try{await refresh();return}catch(e){if(String(e).includes('ระงับ')){showToast('บัญชีนี้ถูกระงับ');throw e}}}
  const nm=($('epName')||{}).value;const name=(nm&&nm!=='Demo User'?nm:'ผู้ใช้'+Math.floor(1000+Math.random()*9000));
- const dob=($('dobInput')||{}).value||undefined;const r=await api('signup',{name,dob,ref:localStorage.kt_ref||undefined,age:age||20,gender:'x',bio:'สวัสดี! มาจาก Kuy Talk',avatar:'😎'});T=localStorage.kt_token=r.token;if(r.refOk)setTimeout(()=>showToast('🎁 ใช้รหัสแนะนำสำเร็จ รับ 50 เหรียญ!'),1500);localStorage.removeItem('kt_ref');await refresh()}
+ const dob=($('dobInput')||{}).value||undefined;const r=await api('signup',{name,dob,ref:localStorage.kt_ref||undefined,consent:window.KT_CONSENT||{},phoneTicket:window.KT_PTICKET||undefined,age:age||20,gender:'x',bio:'สวัสดี! มาจาก Kuy Talk',avatar:'😎'});T=localStorage.kt_token=r.token;window.KT_PTICKET=null;if(r.refOk)setTimeout(()=>showToast('🎁 ใช้รหัสแนะนำสำเร็จ รับ 50 เหรียญ!'),1500);localStorage.removeItem('kt_ref');await refresh()}
 const STK={hi:['🍄👋','หวัดดี'],love:['🍄💕','รักเลย'],haha:['🍄😂','ฮ่าๆ'],wow:['🍄😮','ว้าว'],sad:['🍄🥺','งอแง'],ok:['🍄👌','โอเค'],night:['🍄🌙','ฝันดี'],eat:['🍄🍜','กินยัง']};
 const fmt=t=>{const m=/^\[\[sticker:(\w+)\]\]$/.exec(t||'');if(m&&STK[m[1]])return `<span class="kt-stk" data-stk="${m[1]}"><span class="kt-stk-e">${STK[m[1]][0]}</span><span class="kt-stk-t">${STK[m[1]][1]}</span></span>`;return esc(t)};
 const fmtM=x=>x.deleted?'<i class="ko-del">🚫 ข้อความนี้ถูกยกเลิก</i>':x.type==='photo'&&/^data:image\//.test(x.photo||'')?`<img class="ko-mimg" src="${x.photo}" alt="รูป" onclick="koViewImg(this.src)">`:x.type==='loc'?(window.koLocCard?koLocCard(x.lat,x.lng):'📍'):fmt(x.text);
@@ -30,11 +30,11 @@ async function loadChats(){const L=(await api('matches')).sort((a,b)=>(b.other.o
  for(const m of L){const o=remember(m.other);const msgs=(await api('messages/'+m.id)).map(x=>({from:x.from===ME.id?'me':'them',text:fmtM(x),raw:x.text,id:x.id,ts:x.ts,time:tm(x.ts)}));
   NEW[m.id]={uid:o.id,official:!!o.official,verified:!!o.verified,name:esc(o.name)+(o.official?' <span class="kt-vb kt-off" title="บัญชีทางการ">✔</span>':o.verified?' <span class="kt-vb" title="ยืนยันตัวตนแล้ว">✔</span>':'')+(o.bot&&!o.official?' 🤖':''),rawName:o.name,avatar:letter(o),grad:gr(o.id),online:true,time:msgs.length?msgs[msgs.length-1].time:'',preview:msgs.length?pv(msgs[msgs.length-1].raw):'แมตช์แล้ว! ทักเลย 💕',unread:0,msgs}}
  Object.keys(chats).forEach(k=>{if(!NEW[k])delete chats[k]});for(const k in NEW){const o=chats[k];if(o&&o.peerRead)NEW[k].peerRead=o.peerRead;chats[k]=NEW[k]}buildChatList();if(currentChat&&!chats[currentChat]){currentChat=null;$('activeChatView').style.display='none';$('emptyChatMsg').style.display=''}}
-async function loadPeople(){const L=await api('people');nearbyUsers.length=0;
- L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:u.dist!=null?u.dist:((parseInt(u.id.slice(0,3),16)%150)/10+0.5).toFixed(1),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.turbo?'⚡ Turbo':u.verified?'✔ ยืนยันแล้ว':u.premium?'👑 Premium':u.bot?'🤖 Bot':null,badgeColor:'rgba(124,58,237,.8)',avatar:u.avatar,tags:[u.zodiac&&u.zodiac.sym+' '+u.zodiac.name,u.provinceName&&'📍 '+u.provinceName,...(u.badges||[])].filter(Boolean).map(esc),about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
- if(!ME.premium&&nearbyUsers.length>3)nearbyUsers.splice(3,0,{id:'locked1',name:'???',age:'?',dist:'1.8',bio:'ใกล้มาก!',grad:'linear-gradient(135deg,#374151,#1f2937)',letter:'?',locked:true});
+async function loadPeople(){const L=await api('people'+(window.KT_KM?'?km='+window.KT_KM:''));nearbyUsers.length=0;
+ L.forEach(u=>{remember(u);nearbyUsers.push({id:u.id,name:esc(u.name),rawName:u.name,age:u.age,dist:esc(u.distLabel||(u.dist!=null?u.dist+' km':'—')),bio:esc(u.bio),grad:gr(u.id),letter:letter(u),badge:u.turbo?'⚡ Turbo':u.verified?'✔ ยืนยันแล้ว':u.premium?'👑 Premium':u.bot?'🤖 Bot':null,badgeColor:'rgba(124,58,237,.8)',avatar:u.avatar,tags:[u.zodiac&&u.zodiac.sym+' '+u.zodiac.name,u.provinceName&&'📍 '+u.provinceName,...(u.badges||[])].filter(Boolean).map(esc),about:esc(u.bio)||'—',interests:[],liked:u.liked,mid:u.mid})});
+ if(!ME.premium&&nearbyUsers.length>3)nearbyUsers.splice(3,0,{id:'locked1',name:'???',age:'?',dist:'< 2 km',bio:'ใกล้มาก!',grad:'linear-gradient(135deg,#374151,#1f2937)',letter:'?',locked:true});
  // lucky/shake pools are filled per-spin from the server
- buildNearbyGrid()}
+ buildNearbyGrid();dispatchEvent(new CustomEvent('kt:people',{detail:L}))}
 const _buildNearby=window.buildNearbyGrid;
 window.buildNearbyGrid=function(){_buildNearby();document.querySelectorAll('#nearbyGrid .user-card').forEach((card,i)=>{const u=nearbyUsers[i];if(!u||u.locked)return;
  const lb=card.querySelector('.btn-like');if(lb&&u.liked){lb.classList.add('liked');lb.innerHTML='<em class="ei" style="margin-right:4px">❤️</em>กดแล้ว!'}
@@ -186,7 +186,7 @@ window.chatWithMatched=function(){closeShake();if(currentMatchedUser&&chats[curr
 document.addEventListener('DOMContentLoaded',()=>{const pm=$('payModal');if(pm){const n=document.createElement('div');n.style.cssText='margin:8px 0;padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.15);color:#fbbf24;font-size:12px;text-align:center';n.textContent='⚠️ ระบบชำระเงินจำลอง — ไม่มีการตัดเงินจริงและไม่เก็บข้อมูลบัตร';(pm.querySelector('.pay-methods')||pm.firstElementChild).before(n)}});
 setInterval(()=>{if(sock&&ME&&document.visibilityState==='visible'){if(currentPage==='moments')loadMoments();if(currentPage==='friends')loadFriends()}},20000);
 try{const q=new URLSearchParams(location.search).get('ref');if(q)localStorage.kt_ref=q.slice(0,12)}catch(e){}
-window.KT={fmtM,pv,api,me:()=>ME,setMe:m=>{ME=m;remember(m);updateLikeBar()},refresh,loadChats,loadPeople,sock:()=>sock,get chats(){return chats},openChatUid,fmt,esc,remember,STK,cfg:()=>CFG};
+window.KT={setToken:t=>{T=localStorage.kt_token=t},fmtM,pv,api,me:()=>ME,setMe:m=>{ME=m;remember(m);updateLikeBar()},refresh,loadChats,loadPeople,sock:()=>sock,get chats(){return chats},openChatUid,fmt,esc,remember,STK,cfg:()=>CFG};
 })();
 // fix: the shell's click-outside handler closed the drawer in the same click that opened it
 (function(){const f=window.openProfileDrawer;window.openProfileDrawer=function(id){setTimeout(()=>f(id),0)}})();
