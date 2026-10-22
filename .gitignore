@@ -10,3 +10,4 @@ smoke.js
 .cache/
 smoke-mobile.js
 smoke-brand.js
+!public/brand/*.png
