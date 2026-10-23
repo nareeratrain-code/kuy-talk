@@ -36,4 +36,4 @@ m=await api(pa,'discovery',{minPhotos:3,hasBio:true,gender:'f',ageMin:20,ageMax:
 await api(pb,'discovery',{discovery:false});cards=await api(pa,'cards');ok(!cards.some(c=>c.id===bid),'discovery off hides user');let ppl=await api(pa,'people');ok(!ppl.some(c=>c.id===bid),'hidden from nearby');
 await api(pb,'discovery',{discovery:true});const inc=await pb.evaluate(async()=>(await fetch('/api/discovery',{method:'POST',headers:{'content-type':'application/json','x-token':localStorage.kt_token||''},body:JSON.stringify({visibility:'incog'})})).status);ok(inc===403,'incognito requires premium');
 await api(pa,'discovery',{minPhotos:0,hasBio:false,gender:'',ageMin:null,ageMax:null});
-console.log('page errors:',errs.slice(0,5));console.log(f?f+' FAILED':'ALL OK');await br.close();process.exit(f?1:0)})().catch(e=>{console.error(e);process.exit(1)});
+if(process.env.CLEAN){await api(pa,'account/delete',{}).catch(()=>{});await api(pb,'account/delete',{}).catch(()=>{});console.log('cleaned test accounts')}console.log('page errors:',errs.slice(0,5));console.log(f?f+' FAILED':'ALL OK');await br.close();process.exit(f?1:0)})().catch(e=>{console.error(e);process.exit(1)});
