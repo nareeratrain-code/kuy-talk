@@ -15,8 +15,14 @@ function page(title,html,onBack){let d=$('kpPage');if(!d){d=document.createEleme
  d.innerHTML=`<div class="kp-hd"><button class="kp-back" aria-label="กลับ">‹</button><b>${title}</b><span></span></div><div class="kp-body">${html}</div>`;d.querySelector('.kp-back').onclick=onBack||closePage;d.classList.add('on');d.querySelector('.kp-body').scrollTop=0;return d}
 function closePage(){const d=$('kpPage');if(d)d.remove();if(CP()==='me')switchPage('me',$('nav-profile'))}window.kpClose=closePage;
 // image compress ~1080 long edge, JPEG
-const pick=()=>new Promise(res=>{const f=document.createElement('input');f.type='file';f.accept='image/*';f.onchange=()=>{const file=f.files[0];if(!file)return res(null);const im=new Image();
- im.onload=()=>{let q=.82,mx=1080,out;for(let t=0;t<4;t++){const s=Math.min(1,mx/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);out=c.toDataURL('image/jpeg',q);if(out.length<650000)break;mx*=.8;q-=.08}res(out)};im.onerror=()=>res(null);im.src=URL.createObjectURL(file)};f.click()});
+const pick=()=>new Promise(res=>{const f=document.createElement('input');f.type='file';f.accept='image/jpeg,image/png,image/webp,image/*';f.style.cssText='position:fixed;left:-9999px;opacity:0';document.body.appendChild(f);
+ f.onchange=async()=>{const file=f.files[0];f.remove();if(!file)return res(null);
+  if(/heic|heif/i.test(file.type+file.name)&&!/jpe?g|png|webp/i.test(file.type))toast('⏳ กำลังแปลงไฟล์ HEIC…');
+  let src;try{src=await createImageBitmap(file)}catch(e){src=await new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=URL.createObjectURL(file)})}
+  if(!src){toast('❌ เปิดไฟล์รูปนี้ไม่ได้ กรุณาเลือกรูป JPG หรือ PNG');return res(null)}
+  const W=src.width,H=src.height;let q=.85,mx=1280,out='';for(let t=0;t<6;t++){const sc=Math.min(1,mx/Math.max(W,H)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*sc));c.height=Math.max(1,Math.round(H*sc));const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);out=c.toDataURL('image/jpeg',q);if(out.length<450000&&/^data:image\/jpeg/.test(out))break;mx*=.8;q=Math.max(.6,q-.07)}
+  if(!/^data:image\/jpeg/.test(out)||out.length>650000){toast('❌ ย่อรูปไม่สำเร็จ ลองเลือกรูปอื่น');return res(null)}res(out)};f.click()});
+const upErr=e=>{const s=String(e&&e.message||e);toast('❌ บันทึกรูปไม่สำเร็จ: '+(/fetch|network|Failed/i.test(s)?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง':s))};
 // ---------- editor ----------
 let TAB='edit',D=null;
 function draft(){const m=ME(),d=m.details||{};D={bio:m.bio||'',...JSON.parse(JSON.stringify(d))};return D}
@@ -42,16 +48,16 @@ function renderEdit(){const m=ME(),P=m.photos||[],F=PF().F;
  const d=page('แก้ไขโปรไฟล์',`<div class="kp-tabs"><button class="${TAB==='edit'?'on':''}" onclick="kpTab('edit')">แก้ไข</button><button class="${TAB==='prev'?'on':''}" onclick="kpTab('prev')">ดูตัวอย่าง</button></div>${body}<div class="kp-savebar"><button class="ko-btn" onclick="kpSave()">💾 บันทึก</button></div>`,async()=>{await kpSave(true);closePage()});
  const b=$('kpBio');if(b)b.oninput=()=>{D.bio=b.value;$('kpBc').textContent=b.value.length+'/500'}}
 window.kpTab=t=>{const b=$('kpBio');if(b)D.bio=b.value;TAB=t;renderEdit()};
-window.kpSave=async(silent)=>{const b=$('kpBio');if(b)D.bio=b.value;try{setMe(await A('profile/details',D));if(!silent)toast('บันทึกแล้ว ✨')}catch(e){toast(e)}};
+window.kpSave=async(silent)=>{const b=$('kpBio');if(b)D.bio=b.value;try{setMe(await A('profile/details',D));if(!silent)toast('✅ บันทึกแล้ว')}catch(e){toast('❌ บันทึกไม่สำเร็จ: '+(/fetch|Failed/i.test(String(e))?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้':e))}};
 const sub=(title,html)=>page(title,html,()=>renderEdit());
-window.kpAdd=async()=>{const d=await pick();if(!d)return;toast('กำลังอัปโหลด…');try{await kpSave(true);setMe(await A('photos',{photo:d}));renderEdit()}catch(e){toast(e)}};
-window.kpDel=async i=>{if(!confirm('ลบรูปนี้?'))return;try{await kpSave(true);setMe(await A('photos/'+i,null,'DELETE'));renderEdit()}catch(e){toast(e)}};
-const order=async o=>{try{await kpSave(true);setMe(await A('photos/order',{order:o}));renderEdit()}catch(e){toast(e)}};
+window.kpAdd=async()=>{const d=await pick();if(!d)return;toast('⏳ กำลังอัปโหลดรูป…');try{const b=$('kpBio');if(b)D.bio=b.value;setMe(await A('photos',{photo:d}));renderEdit();toast('✅ บันทึกรูปแล้ว')}catch(e){upErr(e)}};
+window.kpDel=async i=>{if(!confirm('ลบรูปนี้?'))return;try{setMe(await A('photos/'+i,null,'DELETE'));renderEdit();toast('🗑️ ลบรูปแล้ว')}catch(e){upErr(e)}};
+const order=async o=>{try{setMe(await A('photos/order',{order:o}));renderEdit();toast('✅ บันทึกลำดับรูปแล้ว')}catch(e){upErr(e)}};
 window.kpPhotoMenu=i=>{const n=(ME().photos||[]).length;window.koClose&&koClose();const s=document.createElement('div');s.id='koSheet';s.className='ko-sheet-bg on';
  s.innerHTML=`<div class="ko-sheet" style="z-index:3001"><div class="ko-sheet-in"><h3>รูปที่ ${i+1}</h3><div class="ko-grp">${i?`<button class="ko-li" data-a="main"><span>⭐</span><b>ตั้งเป็นรูปหลัก</b><i></i></button><button class="ko-li" data-a="up"><span>⬅️</span><b>เลื่อนไปข้างหน้า</b><i></i></button>`:''}${i<n-1?`<button class="ko-li" data-a="down"><span>➡️</span><b>เลื่อนไปข้างหลัง</b><i></i></button>`:''}<button class="ko-li" data-a="rep"><span>🔄</span><b>เปลี่ยนรูป</b><i></i></button><button class="ko-li ko-danger" data-a="del"><span>🗑️</span><b>ลบรูป</b><i></i></button></div></div></div>`;
  s.onclick=async e=>{const a=e.target.closest('[data-a]');s.remove();if(!a)return;const o=[...Array(n).keys()];
   if(a.dataset.a==='main'){o.splice(i,1);o.unshift(i);order(o)}else if(a.dataset.a==='up'){[o[i-1],o[i]]=[o[i],o[i-1]];order(o)}else if(a.dataset.a==='down'){[o[i+1],o[i]]=[o[i],o[i+1]];order(o)}
-  else if(a.dataset.a==='del')kpDel(i);else{const d=await pick();if(!d)return;try{await kpSave(true);setMe(await A('photos',{photo:d,at:i}));renderEdit()}catch(x){toast(x)}}};document.body.appendChild(s)};
+  else if(a.dataset.a==='del')kpDel(i);else{const d=await pick();if(!d)return;toast('⏳ กำลังอัปโหลดรูป…');try{setMe(await A('photos',{photo:d,at:i}));renderEdit();toast('✅ เปลี่ยนรูปแล้ว')}catch(x){upErr(x)}}};document.body.appendChild(s)};
 window.kpPick=k=>{const f=PF().F[k],multi=f.multi;let sel=multi?[...(D[k]||[])]:D[k];
  const draw=()=>sub(f.ic+' '+f.t,`<p class="kp-sub">${multi?`เลือกได้สูงสุด ${multi} อย่าง (${sel.length}/${multi})`:'เลือก 1 อย่าง'}</p><div class="kp-opts">${f.o.map(o=>`<button class="${(multi?sel.includes(o):sel===o)?'on':''}" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div>
   <div class="kp-savebar"><button class="ko-btn" id="kpOk">ตกลง</button>${multi?'':'<button class="ko-link" id="kpClr">ไม่ระบุ</button>'}</div>`);

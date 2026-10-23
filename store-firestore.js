@@ -33,7 +33,8 @@ async function init(S,blank){const fs=require('firebase-admin/firestore');const 
    else if(Array.isArray(v))arr(K,'',null,v);
    else{const j=JSON.stringify(v),p=K+'/_',hs=h(j);seen.add(p);const L=last.get(p);if(!(L&&L.hs===hs)){last.set(p,{hs});ops.push(['set',p,{j}])}}}
   for(const p of [...last.keys()])if(!seen.has(p)){last.delete(p);ops.push(['del',p])}
-  for(let i=0;i<ops.length;i+=450){const b=db0.batch();for(const [op,p,d] of ops.slice(i,i+450)){const [K,...r]=p.split('/');const ref=db0.collection('kt_'+K).doc(r.join('/'));op==='set'?b.set(ref,d):b.delete(ref)}
+  const chunks=[];{let cur=[],sz=0;for(const o of ops){const z=o[2]?(o[2].j||'').length+200:100;if(cur.length&&(cur.length>=400||sz+z>7e6)){chunks.push(cur);cur=[];sz=0}cur.push(o);sz+=z}if(cur.length)chunks.push(cur)}
+  for(let ci=0,i=0;ci<chunks.length;i+=chunks[ci].length,ci++){const b=db0.batch();for(const [op,p,d] of chunks[ci]){const [K,...r]=p.split('/');const ref=db0.collection('kt_'+K).doc(r.join('/'));op==='set'?b.set(ref,d):b.delete(ref)}
    try{await b.commit()}catch(e){for(const [,p] of ops.slice(i))last.delete(p);throw e}}
  ;S.lastErr=null}catch(e){S.lastErr=String(e.message).slice(0,200);console.error('firestore flush failed',e.message)}finally{busy=false;if(again){again=false;flush()}}};
  S.db=db;S.kind='firestore';S.save=()=>{clearTimeout(t);t=setTimeout(flush,300)};S.flush=flush;S.firestore=db0;
