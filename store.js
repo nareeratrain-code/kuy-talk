@@ -6,7 +6,7 @@ const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friend
 const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false};
 const h=s=>crypto.createHash('sha1').update(s).digest('base64');
 async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.STORAGE||'').trim().toLowerCase();
- if(!KIND&&!URL&&process.env.FIREBASE_SERVICE_ACCOUNT)KIND='firestore';
+ if(!KIND&&!URL&&require('./firebase').serviceAccount())KIND='firestore';
  if(KIND==='firestore'){try{await require('./store-firestore').init(S,blank)}catch(e){console.error('firestore init failed, falling back to json:',e.message);S.lastErr='init: '+String(e.message).slice(0,200);KIND='json'}}
  if(S.kind==='firestore'){}
  else if(URL&&KIND!=='json'){const {Pool}=require('pg');const ssl=/sslmode=disable|localhost|127\.0\.0\.1/.test(URL)?false:{rejectUnauthorized:false};

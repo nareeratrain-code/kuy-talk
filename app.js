@@ -105,7 +105,7 @@ app.post('/api/profile',auth,(req,res)=>{const u=req.u,{name,bio,gender,province
  if(['m','f','x'].includes(gender))u.gender=gender;if(province===''||PROV.has(province)){u.province=province||null;gridPut(u)}
  if(dob){if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)||!(ageOf(dob)>=18))return res.status(400).json({error:'ต้องมีอายุ 18 ปีขึ้นไป'});u.dob=dob;u.age=ageOf(dob)}
  if(typeof avatar==='string'&&(avatar.length<16||(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar)&&avatar.length<600000)))u.avatar=avatar;save();res.json(me(u))});
-app.get('/api/config',(req,res)=>res.json({storage:store.kind,storageErr:store.lastErr||null,fbKey:!!process.env.FIREBASE_SERVICE_ACCOUNT,smsDev:SMS.devMode,firebase:require('./app-extra').firebaseClientConfig(),legalVer:LEGAL_VER,distSteps:[1,5,10,25,50,100,0],packs:PACKS,prices:PRICES,free:FREE_SWIPES,premiumDays:PREMIUM_DAYS,provinces:PROVINCES}));
+app.get('/api/config',(req,res)=>res.json({storage:store.kind,storageErr:store.lastErr||null,fbKey:!!require('./firebase').serviceAccount(),smsDev:SMS.devMode,firebase:require('./app-extra').firebaseClientConfig(),legalVer:LEGAL_VER,distSteps:[1,5,10,25,50,100,0],packs:PACKS,prices:PRICES,free:FREE_SWIPES,premiumDays:PREMIUM_DAYS,provinces:PROVINCES}));
 app.get('/api/user/:id',auth,(req,res)=>{const t=db.users[req.params.id];if(!t||blocked(req.u.id,t.id))return res.status(404).json({error:'ไม่พบ'});res.json(pub(t))});
 // --- swipe / match ---
 const passF=(u,x)=>{const f=u.filters||{};if(f.gender&&x.gender!==f.gender)return false;if(f.ageMin&&x.age<f.ageMin)return false;if(f.ageMax&&x.age>f.ageMax)return false;if(f.province&&x.province!==f.province)return false;if(f.maxDist&&(distOf(u,x)??1e9)>f.maxDist)return false;return true};
