@@ -5,8 +5,10 @@ const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[],sessions:{},consents:[],tickets:[],dataRequests:[],trafficLog:[]};
 const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false};
 const h=s=>crypto.createHash('sha1').update(s).digest('base64');
-async function init(){const URL=process.env.DATABASE_URL;const KIND=(process.env.STORAGE||'').toLowerCase();
- if(KIND==='firestore'){await require('./store-firestore').init(S,blank)}
+async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.STORAGE||'').trim().toLowerCase();
+ if(!KIND&&!URL&&process.env.FIREBASE_SERVICE_ACCOUNT)KIND='firestore';
+ if(KIND==='firestore'){try{await require('./store-firestore').init(S,blank)}catch(e){console.error('firestore init failed, falling back to json:',e.message);S.lastErr='init: '+String(e.message).slice(0,200);KIND='json'}}
+ if(S.kind==='firestore'){}
  else if(URL&&KIND!=='json'){const {Pool}=require('pg');const ssl=/sslmode=disable|localhost|127\.0\.0\.1/.test(URL)?false:{rejectUnauthorized:false};
   const pool=S.pool=new Pool({connectionString:URL,ssl,max:5});
   await pool.query(`create table if not exists kt_users(id text primary key,data jsonb not null,lat double precision,lng double precision,updated timestamptz default now());
