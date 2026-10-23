@@ -1,0 +1,24 @@
+const P=require('puppeteer-core');const B=process.env.BASE||'http://localhost:3000';const D='/workspace/fix-shots7/'+(process.env.TAG||'local')+'-';const sl=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{require('fs').mkdirSync('/workspace/fix-shots7',{recursive:true});const br=await P.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});let f=0;const ok=(c,n)=>{if(!c)f++;console.log((c?'✅ ':'❌ ')+n)};
+const mk=async(name,g)=>{const ctx=await br.createBrowserContext();await ctx.overridePermissions(B,['geolocation']);const pg=await ctx.newPage();pg.on('pageerror',e=>console.log(name,'ERR',e.message));
+ await pg.emulate({viewport:{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true},userAgent:'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36'});await pg.setGeolocation({latitude:13.7563,longitude:100.5018});
+ pg.T=[];await pg.exposeFunction('_t',t=>pg.T.push(t));await pg.goto(B+'/',{waitUntil:'networkidle2',timeout:90000});
+ const j=await pg.evaluate(async(name,g)=>{const j=await (await fetch('/api/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,gender:g,dob:'1995-03-03',province:'bangkok',consent:{terms:true,privacy:true,age18:true}})})).json();if(j.token)localStorage.kt_token=j.token;return j},name,g);pg.uid=(j.me||j.user||j).id;return pg};
+const boot=async pg=>{await pg.reload({waitUntil:'networkidle2'});await pg.waitForFunction(()=>window.KT&&KT.me()&&KT.sock()&&KT.sock().connected,{timeout:60000});await pg.evaluate(()=>{const o=window.showToast;window.showToast=function(t){_t(String(t));return o&&o.apply(this,arguments)};document.getElementById('kgCookieOk')?.click()});await sl(2500);await pg.evaluate(()=>document.getElementById('koSheet')?.remove())};
+const a=await mk('ทดสอบส่ง','m'),b=await mk('ทดสอบรับ','f');await boot(a);await boot(b);
+const ida=await a.evaluate(()=>KT.me().id),idb=await b.evaluate(()=>KT.me().id);
+await a.evaluate(to=>KT.api('swipe',{to,dir:'right'}),idb);const r=await b.evaluate(to=>KT.api('swipe',{to,dir:'right'}),ida);const mid=r.match&&r.match.id;ok(!!mid,'matched');
+await boot(a);await boot(b);
+const open=pg=>pg.evaluate(m=>{void 0;switchPage('chat',document.getElementById('nav-chat'));openChat(m)},mid);await open(a);await open(b);await sl(1500);
+const [fc]=await Promise.all([a.waitForFileChooser(),a.evaluate(()=>{koPhoto(false)})]);await fc.accept(['/tmp/big.jpg']);await sl(8000);
+await a.evaluate(()=>{koSendLoc()});await sl(4000);console.log('A toasts',a.T);
+const chk=async(pg,sel,tag)=>{const s=await pg.evaluate(sel=>{const box=document.querySelector(sel);const im=[...box.querySelectorAll('img.ko-mimg')];const lk=[...box.querySelectorAll('a[href*="google.com/maps"]')];return {img:im.length,loaded:im.filter(i=>i.complete&&i.naturalWidth>0).length,src:im[0]&&im[0].getAttribute('src'),map:lk.length,href:lk[0]&&lk[0].href}},sel);console.log(tag,s);ok(s.loaded>=1&&/^\/api\/pic\//.test(s.src||''),tag+' photo renders');ok(s.map>=1,tag+' location map link');return s};
+await b.evaluate(()=>{const x=document.querySelector('#cwMessages,.cw-messages');x&&(x.scrollTop=1e9)});await b.screenshot({path:D+'1-dm-receiver.png'});const sel1='#cwMessages';await chk(b,sel1,'DM receiver');
+await sl(3000);await boot(b);await open(b);await sl(3000);await b.screenshot({path:D+'2-dm-receiver-after-reload.png'});await chk(b,sel1,'DM after reload');
+// province room
+const room=pg=>pg.evaluate(()=>{switchPage('rooms',document.getElementById('nav-rooms'));openRoom('nan')});await room(a);await room(b);await sl(2000);
+const [fc2]=await Promise.all([a.waitForFileChooser(),a.evaluate(()=>{koRoomPhoto()})]);await fc2.accept(['/tmp/big.png']);await sl(9000);await a.evaluate(()=>{koRoomLoc()});await sl(4000);console.log('A toasts',a.T);
+await b.screenshot({path:D+'3-room-receiver.png'});await chk(b,'#roomMessages','Room receiver');
+await sl(3000);await boot(b);await room(b);await sl(3000);await b.screenshot({path:D+'4-room-receiver-after-reload.png'});await chk(b,'#roomMessages','Room after reload');
+if(process.env.CLEAN)for(const pg of [a,b])console.log('deleted',await pg.evaluate(()=>KT.api('account/delete',{}).then(()=>1,e=>String(e))));
+console.log(f?'FAIL '+f:'ALL OK');await br.close()})().catch(e=>{console.error(e);process.exit(1)});

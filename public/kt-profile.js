@@ -22,7 +22,7 @@ const pick=()=>new Promise(res=>{const f=document.createElement('input');f.type=
   if(!src){toast('❌ เปิดไฟล์รูปนี้ไม่ได้ กรุณาเลือกรูป JPG หรือ PNG');return res(null)}
   const W=src.width,H=src.height;let q=.85,mx=1280,out='';for(let t=0;t<6;t++){const sc=Math.min(1,mx/Math.max(W,H)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(W*sc));c.height=Math.max(1,Math.round(H*sc));const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);out=c.toDataURL('image/jpeg',q);if(out.length<450000&&/^data:image\/jpeg/.test(out))break;mx*=.8;q=Math.max(.6,q-.07)}
   if(!/^data:image\/jpeg/.test(out)||out.length>650000){toast('❌ ย่อรูปไม่สำเร็จ ลองเลือกรูปอื่น');return res(null)}res(out)};f.click()});
-const upErr=e=>{const s=String(e&&e.message||e);toast('❌ บันทึกรูปไม่สำเร็จ: '+(/fetch|network|Failed/i.test(s)?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง':s))};
+window.ktPickImg=()=>pick();const upErr=e=>{const s=String(e&&e.message||e);toast('❌ บันทึกรูปไม่สำเร็จ: '+(/fetch|network|Failed/i.test(s)?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง':s))};
 // ---------- editor ----------
 let TAB='edit',D=null;
 function draft(){const m=ME(),d=m.details||{};D={bio:m.bio||'',...JSON.parse(JSON.stringify(d))};return D}
