@@ -35,7 +35,7 @@ function renderTurboBtn(){const b=$('koTurbo');if(!b||!ME())return;const t=ME().
 setInterval(renderTurboBtn,30000);
 async function loadDeck(){DECK=await A('cards');drawDeck()}
 function renderDeck(){$('pageDeck').innerHTML=`<div class="ko-top"><button class="ko-ic" id="koFilter" onclick="koFilters()" aria-label="ตัวกรอง">⚙️</button>
- <div class="ko-tabs"><button class="on">ปัดการ์ด</button><button onclick="switchPage('nearby',document.getElementById('nav-nearby'))">ใกล้เคียง</button></div><button class="ko-ic ko-turbo" id="koTurbo" onclick="koTurbo()" aria-label="Turbo">⚡</button></div>
+ <div class="ko-tabs"><button onclick="switchPage('nearby',document.getElementById('nav-nearby'))">ใกล้เคียง</button><button class="on">ปัดการ์ด</button></div><button class="ko-ic ko-turbo" id="koTurbo" onclick="koTurbo()" aria-label="Turbo">⚡</button></div>
  <div class="ko-deck" id="koDeck"><div class="ko-empty">กำลังโหลด… 🍄</div></div>
  <div class="ko-acts"><button class="ko-a ko-undo" onclick="koUndo()" title="ย้อนกลับ (Premium)">↺</button><button class="ko-a ko-nope" onclick="koSwipe('left')" title="ผ่าน">✕</button><button class="ko-a ko-cmp" onclick="koCompliment()" title="คำชมเชย">💬</button><button class="ko-a ko-like" onclick="koSwipe('right')" title="ถูกใจ">❤</button><button class="ko-a ko-crush" onclick="koSwipe('right',1)" title="Crush">💎</button></div>`;
  renderTurboBtn();loadDeck().catch(err)}
@@ -230,6 +230,6 @@ addEventListener('kt:sock',e=>{const s=e.detail;
  s.on('crush',d=>{toast('💎 มีคนส่ง Crush ให้คุณ!');updLikesBadge()});
  s.on('compliment',d=>{toast('💬 มีคนส่งคำชมให้คุณ!');updLikesBadge()});
  s.on('coins',()=>K().refresh().catch(()=>{}))});
-addEventListener('kt:loaded',()=>{updLikesBadge();if(currentPage==='chat'&&!currentChat)switchPage('deck',$('nav-deck'))});
+addEventListener('kt:loaded',()=>{updLikesBadge();if(currentPage==='chat'&&!currentChat)switchPage('nearby',$('nav-nearby'))});
 setInterval(()=>{if(document.visibilityState==='visible'&&K().me())updLikesBadge()},45000);
 })();
