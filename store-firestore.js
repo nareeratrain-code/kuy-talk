@@ -35,7 +35,7 @@ async function init(S,blank){const fs=require('firebase-admin/firestore');const 
   for(const p of [...last.keys()])if(!seen.has(p)){last.delete(p);ops.push(['del',p])}
   for(let i=0;i<ops.length;i+=450){const b=db0.batch();for(const [op,p,d] of ops.slice(i,i+450)){const [K,...r]=p.split('/');const ref=db0.collection('kt_'+K).doc(r.join('/'));op==='set'?b.set(ref,d):b.delete(ref)}
    try{await b.commit()}catch(e){for(const [,p] of ops.slice(i))last.delete(p);throw e}}
- }catch(e){console.error('firestore flush failed',e.message)}finally{busy=false;if(again){again=false;flush()}}};
+ ;S.lastErr=null}catch(e){S.lastErr=String(e.message).slice(0,200);console.error('firestore flush failed',e.message)}finally{busy=false;if(again){again=false;flush()}}};
  S.db=db;S.kind='firestore';S.save=()=>{clearTimeout(t);t=setTimeout(flush,300)};S.flush=flush;S.firestore=db0;
  // geo query: geohash range scans on kt_users.g, then exact haversine
  S.nearby=async(lat,lng,km,limit=500)=>{const c=[lat,lng],B=geofire.geohashQueryBounds(c,km*1000);const out=new Map();
