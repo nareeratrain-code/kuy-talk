@@ -57,5 +57,5 @@
 .kp-slot.kp-drag{z-index:20;opacity:.9;box-shadow:0 10px 26px rgba(0,0,0,.35);transition:none;touch-action:none}
 .kp-slot.kp-over{outline:3px dashed #ff4f8b;outline-offset:-3px}
 .kp-savebar .ko-btn:disabled{opacity:.7}
-.kp-page .kp-savebar:not(.kp-inline){display:none}.kp-page .kp-savebar.kp-show{display:block}
+#kpSB{display:none}#kpSB.kp-show{display:block}
 .kt-nbtop{position:sticky;top:0;z-index:5;display:flex;justify-content:center;padding:10px 12px 4px;background:var(--dark,#0f0b14)}
