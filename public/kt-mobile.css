@@ -60,3 +60,14 @@ html,body{max-width:100%;overflow-x:hidden}
   #nearbyGrid .uc-dist,#nearbyGrid .uc-badge{z-index:4;font-size:12px}
   #nearbyGrid .uc-actions button{padding:12px!important;font-size:14px;backdrop-filter:blur(6px)}
 }
+/* fixed 7-tab bottom nav (no horizontal scroll) */
+@media (max-width:768px){
+  #sidebar{overflow-x:hidden!important;justify-content:space-between;padding-left:2px;padding-right:2px;gap:0}
+  #sidebar .nav-icon{flex:1 1 0!important;width:auto!important;min-width:0;padding:0}
+  #sidebar .nav-icon>span:last-of-type{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  #nav-friends,#nav-sub,#nav-settings,#nav-shake,#nav-lucky,#nav-admin,#sidebar .me-avatar{display:none!important}
+  .sidebar-bot{display:contents}
+}
+.kp-short{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 16px}
+.kp-short button{background:#1a1322;border:1px solid #3b2f48;border-radius:14px;color:#fff;font:inherit;font-size:12px;padding:10px 4px;cursor:pointer}.kp-short button b{display:block;font-size:20px}
+@media (max-width:768px){#kgCookie{bottom:calc(70px + env(safe-area-inset-bottom))!important}}
