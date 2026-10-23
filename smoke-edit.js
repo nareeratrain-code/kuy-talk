@@ -1,0 +1,25 @@
+const P=require('puppeteer-core');const B=process.env.BASE||'http://localhost:3000';const D='/workspace/fix-shots7/'+(process.env.TAG||'local')+'-edit-';const sl=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const br=await P.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});let f=0;const ok=(c,n)=>{if(!c)f++;console.log((c?'✅ ':'❌ ')+n)};
+const pg=await br.newPage();pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.emulate({viewport:{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true},userAgent:'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36'});
+const T=[];await pg.exposeFunction('_t',t=>T.push(t));
+await pg.setRequestInterception(true);pg.on('request',r=>{if(/api\/profile\/details$/.test(r.url())&&r.method()==='POST'){const b=JSON.parse(r.postData()||'{}');Object.assign(b,{zodiac:'ราศีเก่า',interests:['แท็กเก่า'],langs:['legacy']});console.log('  details POST (with legacy fields)');return r.continue({postData:JSON.stringify(b)})}r.continue()});
+pg.on('response',r=>{if(/api\/(photos|profile)/.test(r.url()))console.log('  ',r.request().method(),r.url().replace(B,''),r.status())});
+const boot=async()=>{await pg.waitForFunction(()=>window.KT&&KT.me(),{timeout:60000});await pg.evaluate(()=>{const o=window.showToast;window.showToast=function(t){_t(String(t));return o&&o.apply(this,arguments)};document.getElementById('kgCookieOk')?.click()});await sl(3000);await pg.evaluate(()=>document.getElementById('koSheet')?.remove())};
+await pg.goto(B+'/',{waitUntil:'networkidle2',timeout:90000});
+await pg.evaluate(async()=>{const j=await (await fetch('/api/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'ทดสอบแก้',gender:'f',dob:'1996-02-02',province:'bangkok',consent:{terms:true,privacy:true,age18:true}})})).json();localStorage.kt_token=j.token});
+await pg.reload({waitUntil:'networkidle2'});await boot();await pg.evaluate(()=>koEdit());await sl(1500);
+for(const file of ['/tmp/big.jpg','/tmp/big.png']){const [fc]=await Promise.all([pg.waitForFileChooser(),pg.evaluate(()=>{document.querySelector('.kp-add').click()})]);await fc.accept([file]);await sl(9000)}
+const before=await pg.evaluate(()=>KT.api('me'));ok(before.photos.length===2,'2 photos uploaded');
+await pg.evaluate(()=>document.getElementById('kpBio').scrollIntoView({block:'center'}));await sl(400);await pg.tap('#kpBio');await pg.type('#kpBio','ชอบเดินป่า ทดสอบบันทึก 123');
+console.log('dbg',await pg.evaluate(()=>[document.querySelectorAll('#kpBio').length,[...document.querySelectorAll('#kpBio')].map(x=>x.value)]));T.length=0;await pg.evaluate(()=>{document.querySelector('.kp-savebar:not(.kp-inline) .ko-btn').click()});await sl(250);await pg.screenshot({path:D+'1-saving.png'});await sl(2500);await pg.screenshot({path:D+'2-saved.png'});console.log('toasts',T);ok(T.includes('✅ บันทึกแล้ว'),'save toast');
+await pg.reload({waitUntil:'networkidle2'});await boot();const m1=await pg.evaluate(()=>KT.api('me'));console.log('bio=',JSON.stringify(m1.bio),Object.keys(m1).join(','));ok(m1.bio==='ชอบเดินป่า ทดสอบบันทึก 123','bio persisted after reload (legacy fields did not block save)');
+await pg.evaluate(()=>koEdit());await sl(2000);await pg.evaluate(()=>document.querySelector('.kp-grid').scrollIntoView({block:'center'}));await sl(500);
+const r=await pg.evaluate(()=>[...document.querySelectorAll('.kp-slot:not(.kp-add)')].map(e=>{const b=e.getBoundingClientRect();return [b.x+b.width/2,b.y+b.height/2]}));
+const c=await pg.target().createCDPSession();const tp=(type,x,y)=>c.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y}]});
+await tp('touchStart',r[1][0],r[1][1]);await sl(700);for(let k=1;k<=12;k++){await tp('touchMove',r[1][0]+(r[0][0]-r[1][0])*k/12,r[1][1]+(r[0][1]-r[1][1])*k/12);await sl(40)}await pg.screenshot({path:D+'3-dragging.png'});await tp('touchEnd');await sl(3000);console.log('toasts',T.slice(-3));
+await pg.screenshot({path:D+'4-after-drop.png'});
+await pg.reload({waitUntil:'networkidle2'});await boot();const m2=await pg.evaluate(()=>KT.api('me'));ok(m2.photos[0]===before.photos[1]&&m2.photos[1]===before.photos[0],'drag reorder persisted after reload');ok(m2.avatar===m2.photos[0],'avatar = new รูปหลัก');
+await pg.evaluate(()=>koEdit());await sl(2000);await pg.evaluate(()=>document.querySelector('.kp-grid').scrollIntoView({block:'center'}));await sl(800);await pg.screenshot({path:D+'5-after-reload.png'});
+if(process.env.CLEAN)console.log('deleted',await pg.evaluate(()=>KT.api('account/delete',{}).then(()=>1,e=>String(e))));
+console.log(f?'FAIL '+f:'ALL OK');await br.close()})().catch(e=>{console.error(e);process.exit(1)});

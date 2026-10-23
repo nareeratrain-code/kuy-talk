@@ -52,3 +52,8 @@
 .kp-card p{margin:0;white-space:pre-wrap;line-height:1.55}.kp-pc b{font-size:18px}
 .kp-acts{display:flex;gap:8px}.kp-acts .ko-btn{margin-top:6px}
 @media(min-width:769px){.kp-page{left:50%;width:480px;transform:translateX(-50%);box-shadow:0 0 40px #000}}
+
+.kp-slot{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:box-shadow .15s}
+.kp-slot.kp-drag{z-index:20;opacity:.9;box-shadow:0 10px 26px rgba(0,0,0,.35);transition:none;touch-action:none}
+.kp-slot.kp-over{outline:3px dashed #ff4f8b;outline-offset:-3px}
+.kp-savebar .ko-btn:disabled{opacity:.7}

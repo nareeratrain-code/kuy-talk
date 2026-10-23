@@ -27,13 +27,13 @@ module.exports=function(X){const {app,db,save,auth,me,clean,limited,isPrem}=X;db
   if(b.bio!=null)u.bio=s(b.bio,500);
   for(const k of ['job','company','school'])if(b[k]!=null)d[k]=s(b[k],50);
   for(const k of ['series','team','music','games'])if(b[k]!=null)d[k]=s(b[k],100);
-  if(b.social!=null){const h=String(b.social).trim().replace(/^@/,'');if(h&&!/^[A-Za-z0-9._]{1,30}$/.test(h))return res.status(400).json({error:'ชื่อ Instagram ไม่ถูกต้อง'});d.social=h}
+  if(b.social!=null){const h=String(b.social).trim().replace(/^@/,'');if(h&&!/^[A-Za-z0-9._]{1,30}$/.test(h)){if(String(b.social)!==String(d.social||''))return res.status(400).json({error:'ชื่อ Instagram ไม่ถูกต้อง (ใช้ได้เฉพาะ a-z 0-9 . _)'})}else d.social=h}
   if(b.height!=null){const h=parseInt(b.height);d.height=h>=120&&h<=230?h:null}
-  if(b.movies!=null){if(!Array.isArray(b.movies))return res.status(400).json({error:'หนังไม่ถูกต้อง'});d.movies=[...new Set(b.movies.map(x=>s(x,40)).filter(Boolean))].slice(0,6)}
-  if(b.prompts!=null){if(!Array.isArray(b.prompts))return res.status(400).json({error:'ประโยคไม่ถูกต้อง'});d.prompts=b.prompts.filter(p=>p&&PQ.has(p.q)&&s(p.a,150)).slice(0,3).map(p=>({q:p.q,a:s(p.a,150)}))}
+  if(b.movies!=null){if(!Array.isArray(b.movies))b.movies=[];d.movies=[...new Set(b.movies.map(x=>s(x,40)).filter(Boolean))].slice(0,6)}
+  if(b.prompts!=null){if(!Array.isArray(b.prompts))b.prompts=[];d.prompts=b.prompts.filter(p=>p&&PQ.has(p.q)&&s(p.a,150)).slice(0,3).map(p=>({q:p.q,a:s(p.a,150)}))}
   for(const [k,f] of Object.entries(F)){if(b[k]===undefined)continue;const v=b[k];
-   if(f.multi){if(!Array.isArray(v)||v.some(x=>!f.o.includes(x)))return res.status(400).json({error:f.t+' ไม่ถูกต้อง'});d[k]=[...new Set(v)].slice(0,f.multi)}
-   else{if(v!==''&&v!==null&&!f.o.includes(v))return res.status(400).json({error:f.t+' ไม่ถูกต้อง'});d[k]=v||null}}
+   if(f.multi){d[k]=[...new Set((Array.isArray(v)?v:[]).filter(x=>f.o.includes(x)))].slice(0,f.multi)}
+   else{d[k]=v!==''&&v!=null&&f.o.includes(v)?v:null}}
   save();res.json(me(u))});
  // discovery settings
  app.post('/api/discovery',auth,(req,res)=>{const u=req.u,b=req.body||{},f=u.filters=u.filters||{},p=u.prefs=u.prefs||{};const n=(v,lo,hi)=>{v=parseInt(v);return v>=lo&&v<=hi?v:null};

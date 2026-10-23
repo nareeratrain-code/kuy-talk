@@ -31,7 +31,7 @@ function chipsOf(k){const f=PF().F[k],v=D[k];if(!f)return '';return f.multi?(v&&
 const row=(ic,t,val,fn)=>`<button class="kp-row" onclick="${fn}"><span class="kp-ic">${ic}</span><b>${t}</b><i>${val?esc(val):'<em>เพิ่ม</em>'}</i><s>›</s></button>`;
 function renderEdit(){const m=ME(),P=m.photos||[],F=PF().F;
  const body=TAB==='prev'?`<div class="kp-prevwrap">${viewHTML({...m,bio:D.bio,details:D},true)}</div>`:`
- <div class="kp-sec"><h4>รูปของฉัน</h4><p class="kp-sub">แตะรูปเพื่อเปลี่ยน/ตั้งเป็นรูปหลัก/ลบ · รูปแรกคือรูปหลัก</p>
+ <div class="kp-sec"><h4>รูปของฉัน</h4><p class="kp-sub">แตะรูปเพื่อเปลี่ยน/ลบ · กดค้างแล้วลากเพื่อจัดลำดับ · รูปแรกคือรูปหลัก</p>
  <div class="kp-grid">${Array.from({length:PF().MAXP},(_,i)=>P[i]?`<div class="kp-slot" style="background-image:url('${esc(P[i])}')" onclick="kpPhotoMenu(${i})">${i===0?'<span class="kp-main">รูปหลัก</span>':`<span class="kp-n">${i+1}</span>`}<button class="kp-del" onclick="event.stopPropagation();kpDel(${i})" aria-label="ลบ">✕</button></div>`:`<button class="kp-slot kp-add" onclick="kpAdd()" aria-label="เพิ่มรูป"><span>＋</span></button>`).join('')}</div>
  <p class="kp-sub">เพิ่มรูปได้สูงสุด ${PF().MAXP} รูป (${P.length}/${PF().MAXP}) รูปถูกย่อขนาดอัตโนมัติก่อนอัปโหลด</p></div>
  <div class="kp-sec"><h4>ประวัติส่วนตัว <small id="kpBc">${D.bio.length}/500</small></h4><textarea id="kpBio" maxlength="500" placeholder="เล่าเรื่องตัวเองสั้นๆ ให้คนอื่นรู้จัก 🍄">${esc(D.bio)}</textarea>
@@ -46,13 +46,27 @@ function renderEdit(){const m=ME(),P=m.photos||[],F=PF().F;
  <div class="kp-sec"><h4>งานและการศึกษา</h4>${row('💼','ตำแหน่งงาน',D.job,"kpText('job','ตำแหน่งงาน',50)")}${row('🏢','บริษัท',D.company,"kpText('company','บริษัท',50)")}${row('🏫','สถานศึกษา',D.school,"kpText('school','สถานศึกษา',50)")}</div>
  <div class="kp-sec"><h4>ข้อมูลทั่วไป</h4>${row('👤','ชื่อ เพศ วันเกิด จังหวัด','','kpBasic()')}</div><div style="height:90px"></div>`;
  const d=page('แก้ไขโปรไฟล์',`<div class="kp-tabs"><button class="${TAB==='edit'?'on':''}" onclick="kpTab('edit')">แก้ไข</button><button class="${TAB==='prev'?'on':''}" onclick="kpTab('prev')">ดูตัวอย่าง</button></div>${body}<div class="kp-savebar"><button class="ko-btn" onclick="kpSave()">💾 บันทึก</button></div>`,async()=>{await kpSave(true);closePage()});
- const b=$('kpBio');if(b)b.oninput=()=>{D.bio=b.value;$('kpBc').textContent=b.value.length+'/500'}}
+ initDrag();const b=$('kpBio');if(b)b.oninput=()=>{D.bio=b.value;$('kpBc').textContent=b.value.length+'/500'}}
 window.kpTab=t=>{const b=$('kpBio');if(b)D.bio=b.value;TAB=t;renderEdit()};
-window.kpSave=async(silent)=>{const b=$('kpBio');if(b)D.bio=b.value;try{setMe(await A('profile/details',D));if(!silent)toast('✅ บันทึกแล้ว')}catch(e){toast('❌ บันทึกไม่สำเร็จ: '+(/fetch|Failed/i.test(String(e))?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้':e))}};
+let saving=null;window.kpSave=async(silent)=>{const b=$('kpBio');if(b)D.bio=b.value;if(saving)return saving;const btn=document.querySelector('.kp-savebar:not(.kp-inline) .ko-btn');if(btn&&!silent){btn.disabled=true;btn.textContent='⏳ กำลังบันทึก…'}if(!silent)toast('⏳ กำลังบันทึก…');
+ saving=(async()=>{try{const body={};for(const [k,v] of Object.entries(D))if(v!==undefined)body[k]=v;const r=await A('profile/details',body);setMe(r);const d=r.details||{};D={bio:r.bio||'',...JSON.parse(JSON.stringify(d))};if(!silent){toast('✅ บันทึกแล้ว');if(TAB==='edit'){const y=(document.querySelector('.ko-page-body,.ko-pg-b')||{}).scrollTop;renderEdit()}}return true}catch(e){toast('❌ บันทึกไม่สำเร็จ: '+(/fetch|Failed|network/i.test(String(e&&e.message||e))?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง':(e&&e.message||e)));return false}finally{saving=null;if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='💾 บันทึก'}}})();return saving};
 const sub=(title,html)=>page(title,html,()=>renderEdit());
 window.kpAdd=async()=>{const d=await pick();if(!d)return;toast('⏳ กำลังอัปโหลดรูป…');try{const b=$('kpBio');if(b)D.bio=b.value;setMe(await A('photos',{photo:d}));renderEdit();toast('✅ บันทึกรูปแล้ว')}catch(e){upErr(e)}};
 window.kpDel=async i=>{if(!confirm('ลบรูปนี้?'))return;try{setMe(await A('photos/'+i,null,'DELETE'));renderEdit();toast('🗑️ ลบรูปแล้ว')}catch(e){upErr(e)}};
 const order=async o=>{try{setMe(await A('photos/order',{order:o}));renderEdit();toast('✅ บันทึกลำดับรูปแล้ว')}catch(e){upErr(e)}};
+// long-press + drag reorder (pointer events; works with touch on Android Chrome)
+let dragJust=0;const initDrag=()=>{const g=document.querySelector('.kp-grid');if(!g||g._dz)return;g._dz=1;let st=null;
+ const slots=()=>[...g.querySelectorAll('.kp-slot:not(.kp-add)')];
+ const end=async commit=>{if(!st)return;clearTimeout(st.t);const s=st;st=null;slots().forEach(x=>x.classList.remove('kp-over'));if(!s.on)return;s.el.classList.remove('kp-drag');s.el.style.transform='';dragJust=Date.now();
+  if(commit&&s.to!=null&&s.to!==s.from){const o=[...Array(slots().length).keys()];o.splice(s.from,1);o.splice(s.to,0,s.from);toast('⏳ กำลังบันทึกลำดับรูป…');await order(o)}};
+ g.addEventListener('pointerdown',e=>{const el=e.target.closest('.kp-slot:not(.kp-add)');if(!el||e.target.closest('.kp-del'))return;const from=slots().indexOf(el);
+  st={el,from,to:null,x:e.clientX,y:e.clientY,on:false,id:e.pointerId,t:setTimeout(()=>{if(!st)return;st.on=true;el.classList.add('kp-drag');navigator.vibrate&&navigator.vibrate(30)},e.pointerType==='mouse'?150:350)}});
+ g.addEventListener('pointermove',e=>{if(!st||e.pointerId!==st.id)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;if(!st.on){if(Math.hypot(dx,dy)>10){clearTimeout(st.t);st=null}return}
+  st.el.style.transform=`translate(${dx}px,${dy}px) scale(1.06)`;const ss=slots();let to=null;ss.forEach((x,k)=>{const r=x.getBoundingClientRect();const hit=x!==st.el&&e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;x.classList.toggle('kp-over',hit);if(hit)to=k});st.to=to});
+ g.addEventListener('touchmove',e=>{if(st&&st.on)e.preventDefault()},{passive:false});
+ g.addEventListener('pointerup',()=>end(true));g.addEventListener('pointercancel',()=>{if(st&&st.on)return;end(false)});
+ g.addEventListener('contextmenu',e=>{if(e.target.closest('.kp-slot'))e.preventDefault()});
+ g.addEventListener('click',e=>{if(Date.now()-dragJust<400){e.stopPropagation();e.preventDefault()}},true)};
 window.kpPhotoMenu=i=>{const n=(ME().photos||[]).length;window.koClose&&koClose();const s=document.createElement('div');s.id='koSheet';s.className='ko-sheet-bg on';
  s.innerHTML=`<div class="ko-sheet" style="z-index:3001"><div class="ko-sheet-in"><h3>รูปที่ ${i+1}</h3><div class="ko-grp">${i?`<button class="ko-li" data-a="main"><span>⭐</span><b>ตั้งเป็นรูปหลัก</b><i></i></button><button class="ko-li" data-a="up"><span>⬅️</span><b>เลื่อนไปข้างหน้า</b><i></i></button>`:''}${i<n-1?`<button class="ko-li" data-a="down"><span>➡️</span><b>เลื่อนไปข้างหลัง</b><i></i></button>`:''}<button class="ko-li" data-a="rep"><span>🔄</span><b>เปลี่ยนรูป</b><i></i></button><button class="ko-li ko-danger" data-a="del"><span>🗑️</span><b>ลบรูป</b><i></i></button></div></div></div>`;
  s.onclick=async e=>{const a=e.target.closest('[data-a]');s.remove();if(!a)return;const o=[...Array(n).keys()];
