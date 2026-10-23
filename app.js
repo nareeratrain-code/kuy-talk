@@ -49,7 +49,8 @@ const grid=new GEO.Grid();const gridPut=u=>{const l=locOf(u);if(l&&!u.official)g
 const today=()=>new Date().toISOString().slice(0,10);
 const blocked=(a,b)=>db.blocks.some(x=>(x.by===a&&x.target===b)||(x.by===b&&x.target===a));
 const maskPhone=p=>p?'+66 '+p[3]+'x-xxx-'+p.slice(-4):null;
-const me=u=>({...pub(u),phone:maskPhone(u.phone),consent:u.consent||{},geo:u.geo?{district:u.geo.district||null,province:u.geo.province||null,provinceName:PROVN[u.geo.province]||null,paused:!!u.geo.paused,ts:u.geo.ts}:null,locSource:u.geo&&!u.geo.paused?'gps':u.province?'province':null,dob:u.dob||null,inventory:u.inventory||{turbo:0,crush:0,compliment:0},turboUntil:turboOn(u)?u.turboUntil:null,refCode:u.refCode,referredBy:!!u.referredBy,filters:u.filters||{},prefs:u.prefs||{},completion:completion(u),verifyStatus:u.verified?'approved':(u.verifyReq&&u.verifyReq.status)||null,premiumIcon:isPrem(u),coins:u.coins,premium:isPrem(u),premiumUntil:isPrem(u)?u.premiumUntil:null,unlimited:isPrem(u),swipesUsed:u.swipes,free:FREE_SWIPES,swipesLeft:isPrem(u)?'∞':Math.max(0,FREE_SWIPES-u.swipes),luckyLeft:isPrem(u)?'∞':(u.luckyDate===today()?0:1)});
+const legalOk=u=>u.legalVer===LEGAL_VER||db.consents.some(c=>c.uid===u.id&&c.type==='terms'&&c.granted&&c.ver===LEGAL_VER);
+const me=u=>({...pub(u),legalOk:legalOk(u),phone:maskPhone(u.phone),consent:u.consent||{},geo:u.geo?{district:u.geo.district||null,province:u.geo.province||null,provinceName:PROVN[u.geo.province]||null,paused:!!u.geo.paused,ts:u.geo.ts}:null,locSource:u.geo&&!u.geo.paused?'gps':u.province?'province':null,dob:u.dob||null,inventory:u.inventory||{turbo:0,crush:0,compliment:0},turboUntil:turboOn(u)?u.turboUntil:null,refCode:u.refCode,referredBy:!!u.referredBy,filters:u.filters||{},prefs:u.prefs||{},completion:completion(u),verifyStatus:u.verified?'approved':(u.verifyReq&&u.verifyReq.status)||null,premiumIcon:isPrem(u),coins:u.coins,premium:isPrem(u),premiumUntil:isPrem(u)?u.premiumUntil:null,unlimited:isPrem(u),swipesUsed:u.swipes,free:FREE_SWIPES,swipesLeft:isPrem(u)?'∞':Math.max(0,FREE_SWIPES-u.swipes),luckyLeft:isPrem(u)?'∞':(u.luckyDate===today()?0:1)});
 // --- sessions (random token, stored hashed; httpOnly cookie + x-token header for API clients) ---
 const sha=s=>crypto.createHash('sha256').update(String(s)).digest('hex');
 const cookieOf=(h,k)=>{const m=new RegExp('(?:^|;\\s*)'+k+'=([^;]+)').exec(h||'');return m?decodeURIComponent(m[1]):null};
@@ -62,8 +63,11 @@ const userOfTok=t=>{if(!t)return null;const s=db.sessions[sha(t)];if(!s||s.exp<D
 const tlog=(ev,req,uid)=>{db.trafficLog.push({ts:Date.now(),ev,uid:uid||null,ip:req&&(req.ip||req.handshake?.address)||null,ua:String(req&&req.headers&&req.headers['user-agent']||'').slice(0,160)});if(db.trafficLog.length>200000)db.trafficLog.splice(0,20000)};
 setInterval(()=>{const lim=Date.now()-91*DAY;const n=db.trafficLog.length;db.trafficLog=db.trafficLog.filter(x=>x.ts>lim);for(const [k,v] of Object.entries(db.sessions))if(v.exp<Date.now()||!db.users[v.uid])delete db.sessions[k];if(n!==db.trafficLog.length)save()},36e5).unref();
 const TICKETS=new Map();const userByPhone=p=>Object.values(db.users).find(u=>u.phone&&u.phone===p);
+// sliding renewal: once a session is >1 day old, push expiry back to a full SESSION_DAYS and refresh the cookie
+function renewSession(req,res){const t=tokOf(req);if(!t)return;const s=db.sessions[sha(t)];if(!s||s.exp<Date.now())return;if(s.exp-Date.now()>(SESSION_DAYS-1)*DAY)return;
+ s.exp=Date.now()+SESSION_DAYS*DAY;if(!req.headers['x-token']||cookieOf(req.headers.cookie,'kt_s')===t)res.append('Set-Cookie',`kt_s=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}${req.secure||req.headers['x-forwarded-proto']==='https'?'; Secure':''}`);save()}
 function auth(req,res,next){const u=userOfTok(tokOf(req));if(!u||u.bot)return res.status(401).json({error:'กรุณาสมัครก่อน'});if(u.banned)return res.status(403).json({error:'บัญชีนี้ถูกระงับ'});
- if(u.swipeDate!==today()){u.swipeDate=today();u.swipes=0;save()}if(!u.teamOk){u.teamOk=1;teamWelcome(u);save()}req.u=u;next()}
+ if(u.swipeDate!==today()){u.swipeDate=today();u.swipes=0;save()}if(!u.teamOk){u.teamOk=1;teamWelcome(u);save()}req.u=u;renewSession(req,res);next()}
 const matchOf=(a,b)=>db.matches.find(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
 function makeMatch(a,b){let m=matchOf(a,b);if(m)return m;m={id:id(),a,b,ts:Date.now()};db.matches.push(m);io.to(b).emit('match',{id:m.id,other:pub(db.users[a])});io.to(a).emit('match',{id:m.id,other:pub(db.users[b])});save();return m}
 const others=u=>Object.values(db.users).filter(x=>x.id!==u.id&&!x.banned&&!x.official&&!blocked(u.id,x.id));
@@ -87,7 +91,7 @@ const WELCOME=['ยินดีต้อนรับสู่ Kuy Talk 🍄 ข�
 function teamWelcome(u){const m=makeMatch(u.id,TEAM);if(!(db.messages[m.id]||[]).length)db.messages[m.id]=WELCOME.map((t,i)=>({from:TEAM,text:t,ts:Date.now()+i}));}
 // --- account ---
 const LEGAL_VER='2026-10-23';
-function logConsent(u,type,granted,req){(u.consent=u.consent||{})[type]=!!granted;db.consents.push({uid:u.id,type,granted:!!granted,ver:LEGAL_VER,ts:Date.now(),ip:req&&req.ip||null,ua:String(req&&req.headers['user-agent']||'').slice(0,120)})}
+function logConsent(u,type,granted,req){if(type==='terms'&&granted)u.legalVer=LEGAL_VER;(u.consent=u.consent||{})[type]=!!granted;db.consents.push({uid:u.id,type,granted:!!granted,ver:LEGAL_VER,ts:Date.now(),ip:req&&req.ip||null,ua:String(req&&req.headers['user-agent']||'').slice(0,120)})}
 app.post('/api/signup',(req,res)=>{if(limited('signup:'+req.ip,+process.env.SIGNUP_PER_MIN||10,60000))return res.status(429).json({error:'สมัครถี่เกินไป'});let {name,age,gender,bio,avatar,dob,province,ref,consent,phoneTicket}=req.body||{};
  consent=consent||{};if(!consent.terms||!consent.privacy||!consent.age18)return res.status(400).json({error:'กรุณายอมรับข้อกำหนดการใช้งาน นโยบายความเป็นส่วนตัว และยืนยันว่าอายุ 18 ปีขึ้นไป',needConsent:true});
  let phone=null;if(phoneTicket){const t=TICKETS.get(phoneTicket);if(!t||t.exp<Date.now())return res.status(400).json({error:'การยืนยันเบอร์หมดอายุ กรุณาขอ OTP ใหม่'});if(userByPhone(t.phone))return res.status(409).json({error:'เบอร์นี้มีบัญชีแล้ว'});phone=t.phone;TICKETS.delete(phoneTicket)}if(dob!=null){if(!/^\d{4}-\d{2}-\d{2}$/.test(dob))return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'});age=ageOf(dob);if(!(age>=18))return res.status(400).json({error:'ต้องมีอายุ 18 ปีขึ้นไป'})}if(!name||!(+age>=18)||+age>120)return res.status(400).json({error:'ต้องกรอกชื่อและอายุ 18+'});
@@ -100,6 +104,7 @@ function applyRef(u,code){code=code.trim().toUpperCase();const r=Object.values(d
  const m=makeMatch(r.id,TEAM);(db.messages[m.id]=db.messages[m.id]||[]).push({from:TEAM,text:`🎉 มีเพื่อนใช้รหัสแนะนำของคุณ! รับ ${REF_BONUS} เหรียญ`,ts:Date.now()});return true}
 app.post('/api/logout',(req,res)=>{const t=tokOf(req);if(t)delete db.sessions[sha(t)];res.append('Set-Cookie','kt_s=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');save();res.json({ok:true})});
 app.post('/api/logout-all',auth,(req,res)=>{for(const [k,v] of Object.entries(db.sessions))if(v.uid===req.u.id)delete db.sessions[k];io.in(req.u.id).disconnectSockets(true);res.append('Set-Cookie','kt_s=; Path=/; HttpOnly; Max-Age=0');save();res.json({ok:true})});
+app.post('/api/consent/legal',auth,(req,res)=>{const c=req.body||{};if(!c.terms||!c.privacy||!c.age18)return res.status(400).json({error:'กรุณายอมรับข้อกำหนดและนโยบาย'});for(const k of ['terms','privacy','age18'])logConsent(req.u,k,true,req);tlog('consent_legal',req,req.u.id);save();res.json(me(req.u))});
 app.get('/api/me',auth,(req,res)=>res.json(me(req.u)));
 app.post('/api/profile',auth,(req,res)=>{const u=req.u,{name,bio,gender,province,dob,avatar}=req.body;if(name)u.name=clean(name).slice(0,30);if(bio!=null)u.bio=clean(bio).slice(0,200);
  if(['m','f','x'].includes(gender))u.gender=gender;if(province===''||PROV.has(province)){u.province=province||null;gridPut(u)}

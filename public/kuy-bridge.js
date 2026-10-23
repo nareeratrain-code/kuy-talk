@@ -18,7 +18,7 @@ const midOf=uid=>Object.keys(chats).find(k=>chats[k].uid===uid);
 function updateLikeBar(){if(!ME)return;const used=ME.swipesUsed||0,f=ME.free;const l=$('likeLabel'),b=$('likeBarFill');if(l)l.textContent=ME.premium?'∞ Premium':`${used}/${f}`;if(b)b.style.width=ME.premium?'100%':Math.min(100,used/f*100)+'%';try{likeCount=used}catch{}
  const ex=$('premiumExpiryText');if(ex&&ME.premiumUntil)ex.textContent='หมดอายุ '+new Date(ME.premiumUntil).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
 async function refresh(){ME=await api('me');remember(ME);updateLikeBar()}
-async function ensureAccount(age){if(T){try{await refresh();return}catch(e){if(String(e).includes('ระงับ')){showToast('บัญชีนี้ถูกระงับ');throw e}}}
+async function ensureAccount(age){if(T||!window.KT_PTICKET){try{await refresh();return}catch(e){if(String(e).includes('ระงับ')){showToast('บัญชีนี้ถูกระงับ');throw e}}}
  const nm=($('epName')||{}).value;const name=(nm&&nm!=='Demo User'?nm:'ผู้ใช้'+Math.floor(1000+Math.random()*9000));
  const dob=($('dobInput')||{}).value||undefined;const r=await api('signup',{name,dob,ref:localStorage.kt_ref||undefined,consent:window.KT_CONSENT||{},phoneTicket:window.KT_PTICKET||undefined,age:age||20,gender:'x',bio:'สวัสดี! มาจาก Kuy Talk',avatar:'😎'});T=localStorage.kt_token=r.token;window.KT_PTICKET=null;if(r.refOk)setTimeout(()=>showToast('🎁 ใช้รหัสแนะนำสำเร็จ รับ 50 เหรียญ!'),1500);localStorage.removeItem('kt_ref');await refresh()}
 const STK={hi:['🍄👋','หวัดดี'],love:['🍄💕','รักเลย'],haha:['🍄😂','ฮ่าๆ'],wow:['🍄😮','ว้าว'],sad:['🍄🥺','งอแง'],ok:['🍄👌','โอเค'],night:['🍄🌙','ฝันดี'],eat:['🍄🍜','กินยัง']};
@@ -67,6 +67,10 @@ let ROOMCOUNTS={};
 const _checkAge=window.checkAge;
 window.checkAge=async function(){const dob=$('dobInput').value;_checkAge();if(!dob)return;
  const age=Math.floor((Date.now()-new Date(dob))/31557600000);if(age<18)return;try{CFG=await api('config');setupProvinces();await ensureAccount(age);connect();setTimeout(()=>loadAll().catch(()=>{}).finally(()=>dispatchEvent(new Event("kt:loaded"))),700)}catch(e){showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+e)}};
+// returning user with a valid session: skip the age gate / DOB entirely
+window.ktEnterApp=async function(){const g=$('ageGate');if(!g||g.style.display==='none')return;g.style.transition='opacity .4s';g.style.opacity='0';
+ setTimeout(()=>{g.style.display='none';$('shell').style.display='flex';try{initApp()}catch(e){}},400);
+ try{CFG=await api('config');setupProvinces();await refresh();connect();setTimeout(()=>loadAll().catch(()=>{}).finally(()=>dispatchEvent(new Event("kt:loaded"))),700)}catch(e){showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+e)}};
 // ---------- 1:1 chat ----------
 let lastTyping=0;
 window.sendMessage=function(){const input=$('msgInput');const text=input.value.trim();if(!text||!currentChat||!sock)return;
