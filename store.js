@@ -2,7 +2,7 @@
 // otherwise a local JSON file. The app keeps a working copy in memory; save() flushes
 // only changed entries (debounced).
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
-const blank={users:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[],sessions:{},consents:[],tickets:[],dataRequests:[],trafficLog:[]};
+const blank={users:{},pics:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[],sessions:{},consents:[],tickets:[],dataRequests:[],trafficLog:[]};
 const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false};
 const h=s=>crypto.createHash('sha1').update(s).digest('base64');
 async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.STORAGE||'').trim().toLowerCase();

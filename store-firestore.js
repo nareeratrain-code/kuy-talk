@@ -9,7 +9,7 @@
 const crypto=require('crypto');const geofire=require('geofire-common');const FB=require('./firebase');
 const h=s=>crypto.createHash('sha1').update(s).digest('hex').slice(0,20);
 const enc=k=>String(k).replace(/[\/~]/g,c=>c==='/'?'%2F':'%7E');
-const OBJ=new Set(['users','sessions']),MAPARR=new Set(['messages','rooms']);
+const OBJ=new Set(['users','sessions','pics']),MAPARR=new Set(['messages','rooms']);
 async function init(S,blank){const fs=require('firebase-admin/firestore');const db0=fs.getFirestore(FB.admin());
  try{db0.settings({ignoreUndefinedProperties:true})}catch(e){}
  const db=JSON.parse(JSON.stringify(blank));const last=new Map();// docPath -> hash ; order per path
