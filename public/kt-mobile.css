@@ -33,7 +33,6 @@ html,body{max-width:100%;overflow-x:hidden}
   .page{padding-bottom:12px}
   #pageChatWin,#pageRooms{padding-bottom:0!important}
   #profileDrawer{z-index:650!important}
-  #nearbyGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
   img,video{max-width:100%}
   .input-row{flex-wrap:nowrap!important;flex-direction:row!important;align-items:center!important}
   .input-row input{min-width:0!important;width:auto!important;flex:1 1 auto!important}
@@ -43,4 +42,21 @@ html,body{max-width:100%;overflow-x:hidden}
   .cw-info{min-width:0;flex:1}
   .cw-name,#roomName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
-@media (max-width:380px){#nearbyGrid{grid-template-columns:1fr!important}}
+/* nav label fit for ห้องจังหวัด */
+#nav-rooms>span:nth-child(2){font-size:9.5px;white-space:nowrap;letter-spacing:-.2px}
+/* Nearby: big full-width photo cards with overlaid text (mobile first) */
+@media (max-width:768px){
+  #nearbyGrid{grid-template-columns:1fr!important;gap:14px!important;padding:12px!important}
+  #nearbyGrid .user-card{position:relative;border-radius:22px;aspect-ratio:3/4;max-height:calc(100dvh - 150px);width:100%}
+  #nearbyGrid .user-card:hover{transform:none}
+  #nearbyGrid .uc-photo{position:absolute!important;inset:0;height:auto!important}
+  #nearbyGrid .uc-photo .kt-emoji{font-size:140px;bottom:30%}
+  #nearbyGrid .uc-photo-letter{font-size:160px}
+  #nearbyGrid .uc-overlay{display:none}
+  #nearbyGrid .uc-body{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:70px 16px 16px;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.6) 55%,transparent 100%);color:#fff}
+  #nearbyGrid .uc-name{font-size:24px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+  #nearbyGrid .uc-age{font-size:14px;background:rgba(255,255,255,.18);color:#fff}
+  #nearbyGrid .uc-bio{color:rgba(255,255,255,.85);font-size:14px;line-height:1.4}
+  #nearbyGrid .uc-dist,#nearbyGrid .uc-badge{z-index:4;font-size:12px}
+  #nearbyGrid .uc-actions button{padding:12px!important;font-size:14px;backdrop-filter:blur(6px)}
+}

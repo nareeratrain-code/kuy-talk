@@ -4,13 +4,13 @@ const ENVF=path.join(__dirname,'.env');if(fs.existsSync(ENVF))for(const l of fs.
 const ADMIN_PASSWORD=process.env.ADMIN_PASSWORD||'';
 const PROVINCES=require('./provinces');const PROV=new Set(PROVINCES.map(p=>p.id));
 const app=express(),srv=http.createServer(app),io=require('socket.io')(srv,{maxHttpBufferSize:3e6});
-app.use(express.json({limit:'4mb'}));app.set('trust proxy',1);app.get('/healthz',(req,res)=>res.send('ok'));
+app.use(require('compression')());app.use(express.json({limit:'4mb'}));app.set('trust proxy',1);app.get('/healthz',(req,res)=>res.send('ok'));
 // --- admin (basic auth) ---
 function adminAuth(req,res,next){const h=req.headers.authorization||'';const [u,p]=Buffer.from(h.split(' ')[1]||'','base64').toString().split(':');
  const ok=ADMIN_PASSWORD&&p&&p.length===ADMIN_PASSWORD.length&&crypto.timingSafeEqual(Buffer.from(p),Buffer.from(ADMIN_PASSWORD));
  if(!ok){res.set('WWW-Authenticate','Basic realm="Kuy Talk Admin"');return res.status(401).send('ต้องใช้รหัสผู้ดูแล')}next()}
 app.get(['/admin','/admin.html'],adminAuth,(req,res)=>res.sendFile(path.join(__dirname,'admin','admin.html')));
-app.use(express.static(path.join(__dirname,'public')));
+app.use(express.static(path.join(__dirname,'public'),{setHeaders:(res,f)=>{res.setHeader('Cache-Control',/\.(html|js|css|webmanifest)$/.test(f)?'no-cache':'public, max-age=604800')}}));
 // --- db ---
 const store=require('./store'),GEO=require('./geo'),SMS=require('./sms');const db=store.db,save=store.save;
 const id=()=>crypto.randomBytes(8).toString('hex');

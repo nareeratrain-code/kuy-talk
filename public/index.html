@@ -26,6 +26,7 @@
   <meta name="apple-touch-fullscreen" content="yes">
 
   <link rel="icon" type="image/svg+xml" href="/brand/logo-mark.svg"><link rel="alternate icon" type="image/png" href="/brand/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
@@ -1242,15 +1243,12 @@ html, body { height: 100%; overflow: hidden; background: var(--dark); color: var
     <div class="nav-icon" onclick="switchPage('nearby',this)" id="nav-nearby">
       <span style="font-size:18px">📍</span><span data-i18n="nav.nearby">ใกล้</span>
     </div>
-    <div class="nav-icon" onclick="switchPage('anon',this)" id="nav-anon">
-      <span style="font-size:18px">🕵️</span><span data-i18n="nav.anon">นิรนาม</span>
+    <div class="nav-icon" onclick="switchPage('rooms',this)" id="nav-rooms" style="position:relative">
+      <span style="font-size:18px">🏙️</span><span>ห้องจังหวัด</span>
+      <div class="nav-badge" style="background:#38bdf8;color:#0c1a2e;border-color:var(--dark2)">77</div>
     </div>
     <div class="nav-icon" onclick="switchPage('moments',this)" id="nav-moments">
       <span style="font-size:18px">🔥</span><span data-i18n="nav.moments">โมเมนต์</span>
-    </div>
-    <div class="nav-icon" onclick="switchPage('rooms',this)" id="nav-rooms" style="position:relative">
-      <span style="font-size:18px">🗺️</span><span style="color:#38bdf8">ห้องจังหวัด</span>
-      <div class="nav-badge" style="background:#38bdf8;color:#0c1a2e;border-color:var(--dark2)">77</div>
     </div>
     <div class="nav-icon" onclick="switchPage('friends',this)" id="nav-friends">
       <span style="font-size:18px">👥</span><span data-i18n="nav.friends">เพื่อน</span>
