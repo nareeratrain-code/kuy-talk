@@ -11,8 +11,10 @@ services:
         value: "20"
       - key: ADMIN_PASSWORD
         sync: false
-      - key: DATABASE_URL        # Postgres (Neon free / Render Postgres). Unset = JSON file (lost on free-plan redeploys!)
+      - key: DATABASE_URL        # Set this in Render Dashboard to a Render Postgres internal URL or Neon URL.
         sync: false
+      - key: REQUIRE_PERSISTENT_DB
+        value: "true"           # Fail startup instead of silently using ephemeral data.json.
       - key: OTP_SECRET
         generateValue: true
       - key: SMS_PROVIDER        # thaibulksms | twilio | console (console = on-screen test codes)

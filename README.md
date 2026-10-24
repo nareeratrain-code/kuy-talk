@@ -31,6 +31,17 @@ Backups: `backup-v1/` (first version + user's original file), `backup-v2/` (befo
 
 **Storage** – `DATABASE_URL` set → Postgres (`kt_users` rows with lat/lng index + `kt_kv`), only changed rows are flushed (debounced, transactional). Unset → `DATA_DIR/data.json` (local dev). Render free web disks are ephemeral, so production **needs** DATABASE_URL.
 
+### Persistent PostgreSQL on Render
+
+This repository sets `REQUIRE_PERSISTENT_DB=true` in `render.yaml`. Production will stop during startup if `DATABASE_URL` is missing, instead of silently falling back to ephemeral `data.json`.
+
+1. Create a Render Postgres database in the **same region** as the `kuy-talk` web service. Use the database's **internal connection URL** when connecting from Render.
+2. In the web service, open **Environment → Add Environment Variable** and set `DATABASE_URL` to that internal URL. Keep the value secret. Render's Blueprint `sync: false` entry prompts for this value only when a Blueprint is first created; for an existing service, set or update it in the Dashboard.
+3. Redeploy and open `/healthz`. A healthy production response contains `{"ok":true,"storage":"postgres"}`. If the URL is missing or invalid, the deploy fails instead of running with temporary storage.
+4. If an old `data.json` contains accounts or chats that must be retained, back it up and run `DATABASE_URL='...' npm run migrate:postgres -- ./data.json` once. The importer creates `kt_users` and `kt_kv` and uses a transaction.
+
+The app uses `pg` with a small connection pool, creates its tables and geo index at startup, and stores users in `kt_users` and shared collections/messages in `kt_kv`. Do not put a database password in Git, `render.yaml`, screenshots, or chat messages.
+
 **Phone OTP** – `/api/otp/request` + `/api/otp/verify`: Thai mobile (+66/0, 6/8/9 prefix), 6-digit code (HMAC-hashed), 5 min expiry, 60 s resend cooldown, 5 sends/hour/phone, 10/hour/IP, 5 wrong tries, 30 verifies/10 min/IP. Sessions = random 32-byte tokens stored hashed, in an HttpOnly `kt_s` cookie (180 days) + `x-token` header. Logged-in users can link a phone. With no SMS provider configured the code is shown on screen labelled **โหมดทดสอบ**.
 
 | Env var | Purpose |

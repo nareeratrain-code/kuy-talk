@@ -4,7 +4,7 @@ const ENVF=path.join(__dirname,'.env');if(fs.existsSync(ENVF))for(const l of fs.
 const ADMIN_PASSWORD=process.env.ADMIN_PASSWORD||'';
 const PROVINCES=require('./provinces');const PROV=new Set(PROVINCES.map(p=>p.id));
 const app=express(),srv=http.createServer(app),io=require('socket.io')(srv,{maxHttpBufferSize:3e6});
-app.use(require('compression')());app.use(express.json({limit:'4mb'}));app.set('trust proxy',1);app.get('/healthz',(req,res)=>res.send('ok'));
+app.use(require('compression')());app.use(express.json({limit:'4mb'}));app.set('trust proxy',1);
 // --- admin (basic auth) ---
 function adminAuth(req,res,next){const h=req.headers.authorization||'';const [u,p]=Buffer.from(h.split(' ')[1]||'','base64').toString().split(':');
  const ok=ADMIN_PASSWORD&&p&&p.length===ADMIN_PASSWORD.length&&crypto.timingSafeEqual(Buffer.from(p),Buffer.from(ADMIN_PASSWORD));
@@ -13,6 +13,7 @@ app.get(['/admin','/admin.html'],adminAuth,(req,res)=>res.sendFile(path.join(__d
 app.use(express.static(path.join(__dirname,'public'),{setHeaders:(res,f)=>{res.setHeader('Cache-Control',/\.(html|js|css|webmanifest)$/.test(f)?'no-cache':'public, max-age=604800')}}));
 // --- db ---
 const PX=require('./profile-ext');const store=require('./store'),GEO=require('./geo'),SMS=require('./sms');const db=store.db,save=store.save;
+app.get('/healthz',(req,res)=>{const required=['1','true','yes','on'].includes(String(process.env.REQUIRE_PERSISTENT_DB||'').trim().toLowerCase());const persistent=['postgres','firestore'].includes(store.kind);if(required&&!persistent)return res.status(503).json({ok:false,storage:store.kind,error:'persistent database is not configured'});res.json({ok:true,storage:store.kind})});
 const id=()=>crypto.randomBytes(8).toString('hex');
 const FREE_SWIPES=100,DAY=864e5,PREMIUM_DAYS=30;
 const PRICES={premium:100,likesme:30,superlike:5,filter:10};

@@ -3,11 +3,12 @@
 // only changed entries (debounced).
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const blank={users:{},pics:{},likes:[],matches:[],messages:{},rooms:{},moments:[],friends:[],blocks:[],reports:[],visits:[],sessions:{},consents:[],tickets:[],dataRequests:[],trafficLog:[]};
-const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false};
+const S={db:null,kind:'json',pool:null,save:()=>{},nearby:null,ready:false,lastErr:null};
 const h=s=>crypto.createHash('sha1').update(s).digest('base64');
 async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.STORAGE||'').trim().toLowerCase();
+ const required=['1','true','yes','on'].includes(String(process.env.REQUIRE_PERSISTENT_DB||'').trim().toLowerCase());
  if(!KIND&&!URL&&require('./firebase').serviceAccount())KIND='firestore';
- if(KIND==='firestore'){try{await require('./store-firestore').init(S,blank)}catch(e){console.error('firestore init failed, falling back to json:',e.message);S.lastErr='init: '+String(e.message).slice(0,200);KIND='json'}}
+ if(KIND==='firestore'){try{await require('./store-firestore').init(S,blank)}catch(e){S.lastErr='firestore init: '+String(e.message).slice(0,200);if(required)throw new Error('Persistent database is required, but Firestore failed to initialise: '+e.message);console.error('firestore init failed, falling back to json:',e.message);KIND='json'}}
  if(S.kind==='firestore'){}
  else if(URL&&KIND!=='json'){const {Pool}=require('pg');const ssl=/sslmode=disable|localhost|127\.0\.0\.1/.test(URL)?false:{rejectUnauthorized:false};
   const pool=S.pool=new Pool({connectionString:URL,ssl,max:5});
@@ -31,7 +32,7 @@ async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.S
   S.nearby=async(lat,lng,km,limit=500)=>{const dl=km/111,dg=km/(111*Math.cos(lat*Math.PI/180));
    const r=await pool.query(`select id,(6371*2*asin(sqrt(power(sin(radians(lat-$1)/2),2)+cos(radians($1))*cos(radians(lat))*power(sin(radians(lng-$2)/2),2)))) as km from kt_users
     where lat between $1-$3 and $1+$3 and lng between $2-$4 and $2+$4 order by km limit $5`,[lat,lng,dl,dg,limit]);return r.rows.filter(x=>x.km<=km)};
- }else{const DIR=process.env.DATA_DIR||__dirname;fs.mkdirSync(DIR,{recursive:true});const F=path.join(DIR,'data.json');
+ }else{if(required)throw new Error('Persistent database is required: set DATABASE_URL to a PostgreSQL connection string or configure STORAGE=firestore');const DIR=process.env.DATA_DIR||__dirname;fs.mkdirSync(DIR,{recursive:true});const F=path.join(DIR,'data.json');
   const db=Object.assign(JSON.parse(JSON.stringify(blank)),fs.existsSync(F)?JSON.parse(fs.readFileSync(F)):{});for(const k in blank)if(db[k]==null)db[k]=JSON.parse(JSON.stringify(blank[k]));
   S.db=db;let t=null;const flush=()=>{fs.writeFileSync(F+'.tmp',JSON.stringify(db));fs.renameSync(F+'.tmp',F)};S.save=()=>{clearTimeout(t);t=setTimeout(flush,200)};S.flush=async()=>flush()}
  S.ready=true;return S}

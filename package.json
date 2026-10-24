@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "migrate:postgres": "node scripts/migrate-to-postgres.js"
   },
   "keywords": [],
   "author": "",
