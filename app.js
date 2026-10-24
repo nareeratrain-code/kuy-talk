@@ -20,7 +20,9 @@ const FREE_SWIPES=100,DAY=864e5,PREMIUM_DAYS=30;
 const PRICES={premium:100,likesme:30,superlike:5,filter:10};
 const PACKS=[{id:'p1',coins:100,thb:35},{id:'p2',coins:300,thb:99},{id:'p3',coins:1000,thb:290}];
 const BOTS=[['มายด์',22,'f','ชอบคาเฟ่ แมว และดูซีรีส์ 🐱','🌸'],['ต้นกล้า',25,'m','สายเที่ยวภูเขา ⛰️ หาเพื่อนคุย','🏔️'],['แพรว',24,'f','นักร้องคาราโอเกะตัวยง 🎤','🎤'],['บอส',27,'m','โปรแกรมเมอร์ ชอบเล่นเกม 🎮','🎮'],['ใบเตย',23,'f','รักการทำอาหาร 🍜','🍜'],['เจ',26,'m','ฟิตเนส + กาแฟ ☕','💪'],['น้ำหวาน',21,'f','ชอบถ่ายรูป 📷','📷'],['กัปตัน',29,'m','นักบินฝึกหัด ✈️','✈️']];
-if(!Object.values(db.users).some(u=>u.bot)){BOTS.forEach(([name,age,gender,bio,avatar])=>{const i=id();db.users[i]={id:i,name,age,gender,bio,avatar,bot:true}});
+// demo members are seeded only for local dev/tests (json store) or when SEED_DEMO=1; production purges them
+const SEED=process.env.SEED_DEMO==='1'||(process.env.SEED_DEMO!=='0'&&store.kind==='json');
+if(SEED&&!Object.values(db.users).some(u=>u.bot)){BOTS.forEach(([name,age,gender,bio,avatar])=>{const i=id();db.users[i]={id:i,name,age,gender,bio,avatar,bot:true}});
  const bs=Object.values(db.users).filter(u=>u.bot);
  ['วันนี้อากาศดีมาก ไปคาเฟ่กันไหม ☕','เพิ่งกลับจากเที่ยวเชียงใหม่ หนาวมาก ⛰️','ใครชอบร้องเพลงบ้าง 🎤','ทำต้มยำกุ้งครั้งแรก อร่อยกว่าที่คิด 🍜'].forEach((t,i)=>db.moments.push({id:id(),uid:bs[i*2].id,text:t,photo:null,ts:Date.now()-i*36e5,likes:[],comments:[]}));save()}
 const REPLIES=['สวัสดีค่า/ครับ 😊','วันนี้เป็นไงบ้าง?','จริงเหรอ น่าสนใจมาก!','ชอบทำอะไรตอนว่างๆ?','555 ตลกดี','อยู่แถวไหนเหรอ?','ยินดีที่ได้รู้จักนะ 💕','กินข้าวยัง?','เล่าต่อสิ อยากรู้ 👀'];
@@ -84,11 +86,18 @@ if(!db.users[TEAM])db.users[TEAM]={id:TEAM,name:'Kuy Talk Team',age:0,gender:'x'
   if(!u.bot&&!u.refCode)u.refCode=newRef()}}
 {const EXTRA=[['ฟ้าใส','f','ชอบทะเลและซูชิ 🌊'],['ภูมิ','m','วิ่งมาราธอน 🏃'],['ข้าวหอม','f','ทาสแมว 3 ตัว 🐈'],['ไนซ์','m','บาริสต้า ☕'],['มิ้นท์','f','สายคาเฟ่ฮอปปิ้ง 🍰'],['โอ๊ต','m','ช่างภาพอิสระ 📸'],['เอิร์น','f','ครูภาษาอังกฤษ 📚'],['ปั้น','m','เชฟร้านอาหารอีสาน 🌶️'],['ใบบัว','f','ชอบปลูกต้นไม้ 🌿'],['ต้า','m','นักปั่นจักรยาน 🚴'],['จูน','f','นักดนตรีกลางคืน 🎸'],['เต้','m','วิศวกร ชอบเดินป่า 🏕️'],['แก้ม','f','พยาบาล ใจดี 💉'],['ก้อง','m','เล่นบาสทุกเย็น 🏀'],['พิม','f','อ่านนิยาย 📖'],['ณัฐ','m','ขายของออนไลน์ 📦'],['ขิม','f','สายบุญ ชอบเที่ยววัด 🙏'],['แบงค์','m','นักดำน้ำ 🤿'],['ปุยฝ้าย','f','นักวาดภาพประกอบ 🎨'],['โจ้','m','ชาวสวนทุเรียน 🌳'],['หมิว','f','แอร์โฮสเตส ✈️'],['ตั้ม','m','ติวเตอร์คณิต ➗']];
  const bots=Object.values(db.users).filter(u=>u.bot&&!u.official);let i=bots.length;
- if(bots.length<20)for(const [name,gender,bio] of EXTRA){const k=id(),age=20+(i*7)%15,y=new Date().getFullYear()-age;db.users[k]={id:k,name,age,gender,bio,avatar:gender==='f'?'🌸':'🙂',bot:true,dob:`${y}-${String(1+i%12).padStart(2,'0')}-${String(1+i*3%27).padStart(2,'0')}`,verified:i%2===1,badges:i%2?['ตอบไว']:['สายแชท'],seed:i};i++}
+ if(SEED&&bots.length<20)for(const [name,gender,bio] of EXTRA){const k=id(),age=20+(i*7)%15,y=new Date().getFullYear()-age;db.users[k]={id:k,name,age,gender,bio,avatar:gender==='f'?'🌸':'🙂',bot:true,dob:`${y}-${String(1+i%12).padStart(2,'0')}-${String(1+i*3%27).padStart(2,'0')}`,verified:i%2===1,badges:i%2?['ตอบไว']:['สายแชท'],seed:i};i++}
  let j=0;for(const u of Object.values(db.users)){if(!u.bot||u.official||u.geo)continue;let p;
   if(u.province&&u.seed==null){const ds=GEO.D.filter(d=>d[1]===u.province);const d=ds[(j*13)%ds.length];p={lat:d[2]+((j*17)%10-5)/1000,lng:d[3]+((j*29)%10-5)/1000}}else p=GEO.randomPoint(101+j*37);
   const f=GEO.fuzz(p.lat,p.lng,u.id),r=GEO.reverse(f.lat,f.lng);u.geo={...f,district:r&&r.district,province:r&&r.province,ts:Date.now()};if(r)u.province=r.province;j++}
  for(const u of Object.values(db.users))gridPut(u);save()}
+if(!SEED){const F=new Set(Object.values(db.users).filter(u=>u.bot&&!u.official).map(u=>u.id));if(F.size){const c={users:F.size};const n=(k,f)=>{const b=db[k].length;db[k]=db[k].filter(f);c[k]=b-db[k].length};
+ c.pics=0;for(const [k,p] of Object.entries(db.pics||{}))if(F.has(p.uid)){delete db.pics[k];c.pics++}
+ const ms=db.matches.filter(m=>F.has(m.a)||F.has(m.b));c.messageThreads=0;for(const m of ms)if(db.messages[m.id]){delete db.messages[m.id];c.messageThreads++}
+ n('matches',m=>!F.has(m.a)&&!F.has(m.b));n('likes',l=>!F.has(l.from)&&!F.has(l.to));n('friends',f=>!F.has(f.a)&&!F.has(f.b));n('moments',m=>!F.has(m.uid));n('visits',v=>!F.has(v.by)&&!F.has(v.target));n('blocks',b=>!F.has(b.by)&&!F.has(b.target));n('reports',r=>!F.has(r.target)&&!F.has(r.by));
+ c.sessions=0;for(const [k,v] of Object.entries(db.sessions||{}))if(F.has(v.uid)){delete db.sessions[k];c.sessions++}
+ c.roomMsgs=0;for(const k of Object.keys(db.rooms||{})){const b=db.rooms[k].length;db.rooms[k]=db.rooms[k].filter(m=>!m.bot&&!F.has(m.uid));c.roomMsgs+=b-db.rooms[k].length}
+ for(const id of F){delete db.users[id];grid.del(id)}console.log('purged demo members',JSON.stringify(c));save()}}
 const WELCOME=['ยินดีต้อนรับสู่ Kuy Talk 🍄 ขอบคุณที่มาร่วมเป็นส่วนหนึ่งของเรา!','เคล็ดลับ: เพิ่มรูปอย่างน้อย 2 รูปและยืนยันตัวตน ✅ จะช่วยให้แมตช์ง่ายขึ้นมาก','ใช้ Crush 💎 กับคนที่ถูกใจเป็นพิเศษ หรือเปิด Turbo ⚡ เพื่อให้คนเห็นโปรไฟล์คุณมากขึ้น 10 เท่า','พบปัญหาหรือเจอผู้ใช้ไม่เหมาะสม พิมพ์บอกทีมงานในแชทนี้ได้เลย หรือกดรายงานในโปรไฟล์ 🙏'];
 function teamWelcome(u){const m=makeMatch(u.id,TEAM);if(!(db.messages[m.id]||[]).length)db.messages[m.id]=WELCOME.map((t,i)=>({from:TEAM,text:t,ts:Date.now()+i}));}
 // --- account ---
@@ -241,7 +250,7 @@ let countT=null;const pushCounts=()=>{clearTimeout(countT);countT=setTimeout(()=
 function roomPost(pid,u,text,isBot,extra){const msg={id:id(),uid:u.id,name:u.name,avatar:u.avatar,bot:!!isBot,text,ts:Date.now(),...(extra||{})};const r=db.rooms[pid]=db.rooms[pid]||[];r.push(msg);if(r.length>100)r.splice(0,r.length-100);save();
  for(const sid of io.sockets.adapter.rooms.get('room:'+pid)||[]){const s=io.sockets.sockets.get(sid);if(s&&!blocked(s.uid,u.id))s.emit('room:msg',{room:pid,...msg})}}
 // bots chat in popular rooms that have humans
-setInterval(()=>{const live=HOT.filter(p=>io.sockets.adapter.rooms.get('room:'+p)?.size);if(!live.length)return;const p=pick(live);const b=pick(Object.values(db.users).filter(u=>u.bot&&!u.official));roomPost(p,b,pick(ROOM_BOT),true)},Number(process.env.ROOM_BOT_MS||25000));
+setInterval(()=>{const live=HOT.filter(p=>io.sockets.adapter.rooms.get('room:'+p)?.size);if(!live.length)return;const p=pick(live);const bs=Object.values(db.users).filter(u=>u.bot&&!u.official);if(!bs.length)return;const b=pick(bs);roomPost(p,b,pick(ROOM_BOT),true)},Number(process.env.ROOM_BOT_MS||25000));
 io.on('connection',s=>{const u=userOfTok(s.handshake.auth.token||cookieOf(s.handshake.headers.cookie,'kt_s'));if(!u||u.bot||u.banned)return s.disconnect();s.uid=u.id;s.join(u.id);online.set(u.id,(online.get(u.id)||0)+1);s.emit('room:counts',counts());
  const flood=(k,n,w)=>{if(limited(k+':'+u.id,n,w)){s.emit('err','ส่งข้อความเร็วเกินไป กรุณารอสักครู่ ⏳');return true}return false};
  s.on('msg',({mid,text,photo,loc}={})=>{if(flood('msg',8,8000))return;const m=db.matches.find(x=>x.id===mid);text=clean(text);
