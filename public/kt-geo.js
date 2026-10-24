@@ -9,10 +9,10 @@ window.koClose=window.koClose||(()=>$('koSheet')?.remove());
 const back='<button class="ko-link" onclick="koSettings()">‹ กลับไปตั้งค่า</button>';
 const st=document.createElement('style');st.textContent=`.kg-cons{text-align:left;margin:10px 0 4px;font-size:12.5px;line-height:1.5}.kg-cons label{display:flex;gap:8px;align-items:flex-start;margin:6px 0;color:var(--text2,#ccc)}.kg-cons input{margin-top:3px;accent-color:#facc15;width:16px;height:16px;flex:none}.kg-cons a{color:#facc15}.kg-opt{opacity:.85}
 .kg-phone{width:100%;margin-top:8px;padding:11px;border-radius:12px;border:1px solid #facc15;background:transparent;color:#facc15;font-weight:700;cursor:pointer}.kg-in{width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:1px solid #333;background:#16161a;color:#fff;font-size:16px;margin:6px 0}
-.kg-dev{background:#3a2e05;border:1px dashed #facc15;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}.kg-dev b{font-size:20px;letter-spacing:4px;color:#facc15}.kg-ok{color:#4ade80;font-size:13px;margin:6px 0}
+ .kg-dev{background:#3a2e05;border:1px dashed #facc15;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}.kg-dev b{font-size:20px;letter-spacing:4px;color:#facc15}.kg-ok{color:#4ade80;font-size:13px;margin:6px 0}.kg-link{display:block;width:100%;margin:10px 0 0;padding:8px;border:0;background:none;color:#facc15;font-weight:700;cursor:pointer;text-align:center}
 #kgCookie{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:10040;max-width:560px;margin:0 auto;background:#1b1b20;border:1px solid #3a3a44;border-radius:14px;padding:10px 12px;font-size:12.5px;color:#ddd;display:flex;gap:10px;align-items:center;box-shadow:0 8px 30px #0008}#kgCookie a{color:#facc15}#kgCookie button{flex:none;background:#facc15;color:#111;border:0;border-radius:10px;padding:8px 12px;font-weight:700}
 .kg-tbl{width:100%;font-size:12px;border-collapse:collapse}.kg-tbl td{border-bottom:1px solid #2a2a30;padding:5px 4px}.kg-login{background:linear-gradient(135deg,#facc15,#f59e0b)!important;color:#1a1200!important;font-weight:800;margin:8px 0 2px}.kg-or{font-size:12px;color:#9ca3af;text-align:center;margin:6px 0 10px}.kg-sel{width:100%;padding:10px;border-radius:10px;background:#16161a;color:#fff;border:1px solid #333;margin:4px 0}`;document.head.appendChild(st);
-// ---------- age gate: consent + phone login ----------
+// ---------- age gate: separate phone login and signup screens ----------
 let hasSession=false;
 const card=document.querySelector('#ageGate .ag-card');
 if(card){const btn=card.querySelector('.ag-btn');const box=document.createElement('div');box.id='kgGate';
@@ -21,10 +21,15 @@ if(card){const btn=card.querySelector('.ag-btn');const box=document.createElemen
  <label><input type="checkbox" id="kgPriv"> <span>ฉันได้อ่าน <a href="/legal/privacy.html" target="_blank">นโยบายความเป็นส่วนตัว</a> และยินยอมให้ประมวลผลข้อมูลโปรไฟล์ซึ่งอาจบ่งชี้พฤติกรรมทางเพศ (ข้อมูลอ่อนไหว ม.26 PDPA)</span></label>
  <label class="kg-opt"><input type="checkbox" id="kgLoc"> <span>(ไม่บังคับ) ยินยอมให้ใช้ <b>ตำแหน่ง GPS</b> เพื่อแสดงคนใกล้คุณ — เก็บแบบคลาดเคลื่อน ~100–300 ม. และแสดงแค่ระยะทาง</span></label>
  <label class="kg-opt"><input type="checkbox" id="kgMkt"> <span>(ไม่บังคับ) รับข่าวสารและโปรโมชัน</span></label></div>
- <div id="kgPhoneOk"></div><button type="button" class="kg-phone" id="kgPhoneBtn">📱 สมัครด้วยเบอร์โทรศัพท์</button>`;
- const lg=document.createElement('div');lg.id='kgLoginTop';lg.innerHTML='<button type="button" class="kg-phone kg-login" id="kgLoginBtn">🔑 มีบัญชีแล้ว? เข้าสู่ระบบด้วยเบอร์โทร</button><div class="kg-or">หรือสมัครใหม่ด้านล่าง</div>';
+ <div id="kgPhoneOk"></div><button type="button" class="kg-phone" id="kgPhoneBtn">📱 ยืนยันเบอร์เพื่อสมัคร</button>`;
+ const lg=document.createElement('div');lg.id='kgLoginTop';lg.innerHTML='<button type="button" class="kg-phone kg-login" id="kgLoginBtn">🔑 เข้าสู่ระบบด้วยเบอร์โทร</button><button type="button" class="kg-link" id="kgSignupBtn">สมัครบัญชีใหม่</button>';
  const sub=card.querySelector('.ag-sub');(sub||card.firstChild).after(lg);
- btn.parentNode.insertBefore(box,btn);$('kgPhoneBtn').onclick=()=>otpSheet(false);$('kgLoginBtn').onclick=()=>otpSheet(false);
+ btn.parentNode.insertBefore(box,btn);
+ const signupParts=[$('ktDob'),card.querySelector('label'),box,btn,card.querySelector('.ag-note')];
+ const setSignup=on=>{signupParts.forEach(x=>{if(x)x.style.display=on?'':'none'});$('kgLoginTop').style.display=on?'none':'';if(on){$('kgSignupBack')?.remove();const b=document.createElement('button');b.id='kgSignupBack';b.type='button';b.className='kg-link';b.textContent='‹ กลับเข้าสู่ระบบ';b.onclick=()=>setSignup(false);lg.after(b)}else $('kgSignupBack')?.remove()};
+ setSignup(false);
+ $('kgPhoneBtn').onclick=()=>otpSheet(false);$('kgLoginBtn').onclick=()=>otpSheet(false);$('kgSignupBtn').onclick=()=>setSignup(true);
+ window.KTShowSignup=setSignup;
  const note=card.querySelector('.ag-note');if(note)note.innerHTML='บริการสำหรับผู้มีอายุ 18 ปีขึ้นไปเท่านั้น · <a href="/legal/privacy.html" target="_blank" style="color:#facc15">ความเป็นส่วนตัว</a> · <a href="/legal/cookies.html" target="_blank" style="color:#facc15">คุกกี้</a>';
  api('me').then(m=>{hasSession=true;ktReturning(m)}).catch(()=>{});
  const prev=window.checkAge;window.checkAge=function(){if(!hasSession){const ok=$('kgAge').checked&&$('kgTerms').checked&&$('kgPriv').checked;if(!ok){$('ageError').textContent='⚠️ กรุณายืนยันอายุ 18+ และยอมรับข้อกำหนดกับนโยบายความเป็นส่วนตัว';return}
@@ -65,7 +70,7 @@ function otpSheet(link){sheet(`<h3>📱 ${link?'ผูกเบอร์โท�
   else r=await api('otp/verify',{phone:tel(),code,link:!!link});
   if(link){K().setMe(r.me||r);toast('✔ ผูกเบอร์แล้ว');return koPhone()}
   if(r.token){K().setToken?K().setToken(r.token):localStorage.setItem('kt_token',r.token);hasSession=true;koClose();api('me').then(ktReturning).catch(e=>er(e.message))}
-  else if(r.phoneTicket){window.KT_PTICKET=r.phoneTicket;koClose();$('kgPhoneOk').innerHTML='<p class="kg-ok">✔ ยืนยันเบอร์แล้ว (บัญชีใหม่) — กรอกวันเกิดและยอมรับเงื่อนไขด้านบนเพื่อสมัคร</p>';$('kgPhoneBtn').style.display='none'}}catch(e){er(e.message)}}}
+  else if(r.phoneTicket){window.KT_PTICKET=r.phoneTicket;koClose();window.KTShowSignup&&window.KTShowSignup(true);$('kgPhoneOk').innerHTML='<p class="kg-ok">✔ ไม่พบบัญชีเดิมที่ผูกกับเบอร์นี้ — ยืนยันเบอร์แล้ว กรุณากรอกข้อมูลเพื่อสมัครบัญชีใหม่</p>';$('kgPhoneBtn').style.display='none'}}catch(e){er(e.message)}}}
 window.koPhone=()=>{const m=ME();sheet(`<h3>📱 เบอร์โทรศัพท์</h3>${m.phone?`<p>เบอร์ที่ผูกไว้: <b>${esc(m.phone)}</b></p><p class="ko-sub">ใช้เข้าสู่ระบบด้วย OTP บนอุปกรณ์อื่นได้</p><button class="ko-btn" onclick="koOtpLink()">เปลี่ยนเบอร์</button><button class="ko-link ko-danger" onclick="koUnlink()">ยกเลิกการผูกเบอร์</button>`:`<p class="ko-sub">ผูกเบอร์โทรเพื่อกู้คืนบัญชีและเข้าสู่ระบบบนอุปกรณ์อื่นได้</p><button class="ko-btn" onclick="koOtpLink()">ผูกเบอร์โทรศัพท์</button>`}${back}`)};
 window.koOtpLink=()=>otpSheet(true);
 window.koUnlink=async()=>{if(!confirm('ยกเลิกการผูกเบอร์?'))return;try{K().setMe(await api('phone/unlink',{}));koPhone()}catch(e){toast(e.message)}};
