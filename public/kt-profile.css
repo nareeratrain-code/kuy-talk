@@ -59,3 +59,4 @@
 .kp-savebar .ko-btn:disabled{opacity:.7}
 #kpSB{display:none}#kpSB.kp-show{display:block}
 .kt-nbtop{position:sticky;top:0;z-index:5;display:flex;justify-content:center;padding:10px 12px 4px;background:var(--dark,#0f0b14)}
+.kp-gh{margin:14px 0 6px;font-size:14px;color:#facc15}.kp-hide{display:flex;gap:8px;align-items:center;margin:14px 0;padding:10px;border:1px dashed #4c3a5e;border-radius:12px;font-size:13.5px}.kp-hide input{width:18px;height:18px;accent-color:#ef4444}

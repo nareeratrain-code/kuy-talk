@@ -4,6 +4,7 @@ const $=id=>document.getElementById(id),K=()=>window.KT,A=(...a)=>K().api(...a),
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const toast=m=>window.showToast?showToast(m):alert(m);
 const PF=()=>window.KTPF||{F:{},PROMPTS:{},MOVIES:[],MAXP:9};
+const KS=g=>Object.keys(PF().F).filter(k=>PF().F[k].g===g);
 const CP=()=>{try{return currentPage}catch(e){return null}};const ORIG_EDIT=window.koEdit;
 const setMe=m=>{K().setMe(m)};
 const GR=['linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#8b5cf6,#ec4899)','linear-gradient(135deg,#06b6d4,#3b82f6)','linear-gradient(135deg,#10b981,#14b8a6)'];
@@ -41,10 +42,11 @@ function renderEdit(){const m=ME(),P=m.photos||[],F=PF().F;
  <div class="kp-sec"><h4>ความสนใจ</h4><div class="kp-chips">${(D.interests||[]).map(x=>`<span>${esc(x)}</span>`).join('')||'<em class="kp-sub">ยังไม่ได้เลือก</em>'}</div><button class="kp-addbtn" onclick="kpPick('interests')">แก้ไขความสนใจ</button></div>
  <div class="kp-sec"><h4>ของโปรด</h4>
   ${row('🎬','หนังที่ชอบ',(D.movies||[]).join(', '),'kpMovies()')}${row('📺','ซีรีส์ที่กำลังดู',D.series,"kpText('series','ซีรีส์ที่กำลังดู',100)")}${row('⚽','ทีมโปรด',D.team,"kpText('team','ทีมโปรด',100)")}${row('🎮','เกมที่เล่น',D.games,"kpText('games','เกมที่เล่น',100)")}${row('🎵','เพลง/ศิลปินที่ชอบ',D.music,"kpText('music','เพลง/ศิลปินที่ชอบ',100)")}</div>
- <div class="kp-sec"><h4>ความสัมพันธ์</h4>${['goal','rel'].map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}</div>
- <div class="kp-sec"><h4>ข้อมูลพื้นฐาน</h4>${row('📏','ส่วนสูง',D.height?D.height+' ซม.':'',"kpText('height','ส่วนสูง (ซม.)',3,1)")}${['langs','zodiac','edu','family','comm','love'].map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}</div>
- <div class="kp-sec"><h4>ไลฟ์สไตล์</h4>${['pets','drink','smoke','exercise'].map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}${row('📸','Instagram',D.social?'@'+D.social:'',"kpText('social','ชื่อผู้ใช้ Instagram',30)")}</div>
- <div class="kp-sec"><h4>งานและการศึกษา</h4>${row('💼','ตำแหน่งงาน',D.job,"kpText('job','ตำแหน่งงาน',50)")}${row('🏢','บริษัท',D.company,"kpText('company','บริษัท',50)")}${row('🏫','สถานศึกษา',D.school,"kpText('school','สถานศึกษา',50)")}</div>
+ <div class="kp-sec"><h4>ความสัมพันธ์</h4>${KS('rel').map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}</div>
+ <div class="kp-sec"><h4>ข้อมูลพื้นฐาน</h4>${row('📏','ส่วนสูง',D.height?D.height+' ซม.':'',"kpText('height','ส่วนสูง (ซม.)',3,1)")}${KS('basic').map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}</div>
+ <div class="kp-sec"><h4>ไลฟ์สไตล์</h4>${KS('life').map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}${row('📸','Instagram',D.social?'@'+D.social:'',"kpText('social','ชื่อผู้ใช้ Instagram',30)")}</div>
+ <div class="kp-sec"><h4>งานและการศึกษา</h4>${row('💼','ตำแหน่งงาน',D.job,"kpText('job','ตำแหน่งงาน',50)")}${row('🏢','บริษัท',D.company,"kpText('company','บริษัท',50)")}${row('🏫','สถานศึกษา',D.school,"kpText('school','สถานศึกษา',50)")}${KS('work').map(k=>row(F[k].ic,F[k].t,chipsOf(k),`kpPick('${k}')`)).join('')}</div>
+ <div class="kp-sec"><h4>ข้อมูลส่วนบุคคล (ไม่บังคับ) <small>🔒 PDPA</small></h4><p class="kp-sub">ข้อมูลอ่อนไหว ใส่หรือไม่ก็ได้ และเลือกซ่อนจากคนอื่นได้</p>${KS('sens').map(k=>row(F[k].ic,F[k].t+((D.hide||[]).includes(k)?' 🙈':''),chipsOf(k),`kpPick('${k}')`)).join('')}</div>
  <div class="kp-sec"><h4>ข้อมูลทั่วไป</h4>${row('👤','ชื่อ เพศ วันเกิด จังหวัด','','kpBasic()')}</div><div style="height:90px"></div>`;
  const d=page('แก้ไขโปรไฟล์',`<div class="kp-tabs"><button class="${TAB==='edit'?'on':''}" onclick="kpTab('edit')">แก้ไข</button><button class="${TAB==='prev'?'on':''}" onclick="kpTab('prev')">ดูตัวอย่าง</button></div>${body}<div class="kp-savebar" id="kpSB"><button class="ko-btn" onclick="kpSave()">💾 บันทึก</button></div>`,async()=>{await kpSave(true);closePage()});
  {const bd=d.querySelector('.kp-body');if(bd&&mainY)bd.scrollTop=mainY;mainY=0}initDrag();const b=$('kpBio');if(b)b.oninput=()=>{D.bio=b.value;$('kpBc').textContent=b.value.length+'/500';kpDirty();autoSave(1200)};kpDirty();if(JSON.stringify(D)!==SNAP)autoSave(300)}
@@ -75,9 +77,9 @@ window.kpPhotoMenu=i=>{const n=(ME().photos||[]).length;window.koClose&&koClose(
   if(a.dataset.a==='main'){o.splice(i,1);o.unshift(i);order(o)}else if(a.dataset.a==='up'){[o[i-1],o[i]]=[o[i],o[i-1]];order(o)}else if(a.dataset.a==='down'){[o[i+1],o[i]]=[o[i],o[i+1]];order(o)}
   else if(a.dataset.a==='del')kpDel(i);else{const d=await pick();if(!d)return;toast('⏳ กำลังอัปโหลดรูป…');try{setMe(await A('photos',{photo:d,at:i}));renderEdit();toast('✅ เปลี่ยนรูปแล้ว')}catch(x){upErr(x)}}};document.body.appendChild(s)};
 window.kpPick=k=>{const f=PF().F[k],multi=f.multi;let sel=multi?[...(D[k]||[])]:D[k];
- const draw=()=>sub(f.ic+' '+f.t,`<p class="kp-sub">${multi?`เลือกได้สูงสุด ${multi} อย่าง (${sel.length}/${multi})`:'เลือก 1 อย่าง'}</p><div class="kp-opts">${f.o.map(o=>`<button class="${(multi?sel.includes(o):sel===o)?'on':''}" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+ const draw=()=>sub(f.ic+' '+f.t,`<p class="kp-sub">${multi?`เลือกได้สูงสุด ${multi} อย่าง (${sel.length}/${multi})`:'เลือก 1 อย่าง'}</p>${(f.groups||[{t:'',o:f.o}]).map(g=>`${g.t?`<h5 class="kp-gh">${esc(g.t)}</h5>`:''}<div class="kp-opts">${g.o.map(o=>`<button class="${(multi?sel.includes(o):sel===o)?'on':''}" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div>`).join('')}${f.sens?`<label class="kp-hide"><input type="checkbox" id="kpHide" ${(D.hide||[]).includes(k)?'checked':''}> 🙈 ซ่อนข้อมูลนี้จากผู้อื่น (เห็นเฉพาะฉัน)</label>`:''}
   <div class="kp-savebar"><button class="ko-btn" id="kpOk">ตกลง</button>${multi?'':'<button class="ko-link" id="kpClr">ไม่ระบุ</button>'}</div>`);
- draw();const bind=()=>{document.querySelectorAll('.kp-opts button').forEach(b=>b.onclick=()=>{const o=b.dataset.o;if(multi){if(sel.includes(o))sel=sel.filter(x=>x!==o);else if(sel.length<multi)sel.push(o);else return toast('เลือกได้สูงสุด '+multi)}else sel=sel===o?null:o;D[k]=multi?[...sel]:sel;draw();bind()});
+ draw();const bind=()=>{document.querySelectorAll('.kp-opts button').forEach(b=>b.onclick=()=>{const o=b.dataset.o;if(multi){if(sel.includes(o))sel=sel.filter(x=>x!==o);else if(sel.length<multi)sel.push(o);else return toast('เลือกได้สูงสุด '+multi)}else sel=sel===o?null:o;D[k]=multi?[...sel]:sel;draw();bind()});const hc=$('kpHide');if(hc)hc.onchange=()=>{const h=new Set(D.hide||[]);hc.checked?h.add(k):h.delete(k);D.hide=[...h]};
   $('kpOk').onclick=()=>{kpCommit=null;D[k]=sel;renderEdit()};if($('kpClr'))$('kpClr').onclick=()=>{D[k]=null;renderEdit()}};bind()};
 window.kpText=(k,t,max,num)=>{sub(t,`<input id="kpT" ${num?'type="number" inputmode="numeric" min="120" max="230"':''} maxlength="${max}" value="${esc(D[k]??'')}" placeholder="${esc(t)}"><div class="kp-savebar"><button class="ko-btn" id="kpOk">ตกลง</button></div>`);const i=$('kpT');i.focus();const commit=()=>{D[k]=num?(+i.value||null):i.value.trim().replace(k==='social'?/^@/:/$^/,'')};kpCommit=commit;i.onkeydown=e=>{if(e.key==='Enter')$('kpOk').click()};$('kpOk').onclick=()=>{kpCommit=null;commit();renderEdit()}};
 window.kpMovies=()=>{let sel=[...(D.movies||[])],q='';const all=PF().MOVIES;
@@ -99,8 +101,9 @@ window.kpBasic=async()=>{await kpSave(true);closePage();window.koEditBasic&&koEd
 const unit=()=>(ME()&&ME().prefs||{}).unit==='mi';
 const distTxt=u=>u.dist!=null?(unit()?(u.dist*0.621).toFixed(1)+' ไมล์':u.dist+' km'):'';
 function viewHTML(u,preview){const P=pics(u),d=u.details||{},F=PF().F;const ch=(arr)=>arr.filter(Boolean).map(x=>`<span>${x}</span>`).join('');
- const basics=ch([d.height&&'📏 '+d.height+' ซม.',...['zodiac','edu','family','comm','love'].map(k=>d[k]&&F[k].ic+' '+esc(d[k])),...(d.langs||[]).map(x=>'🗣️ '+esc(x))]);
- const life=ch(['pets','drink','smoke','exercise'].map(k=>d[k]&&F[k].ic+' '+esc(d[k])));
+ const KV=g=>Object.keys(F).filter(k=>F[k].g===g&&k!=='langs').flatMap(k=>Array.isArray(d[k])?d[k].map(x=>F[k].ic+' '+esc(x)):[d[k]&&F[k].ic+' '+esc(d[k])]);
+ const basics=ch([d.height&&'📏 '+d.height+' ซม.',...KV('basic'),...(d.langs||[]).map(x=>'🗣️ '+esc(x)),...KV('work'),...(preview||!(d.hide||[]).length?KV('sens'):KV('sens'))]);
+ const life=ch(KV('life'));
  return `<div class="kp-view"><div class="kp-car" data-p="0">${P.length?P.map((p,j)=>`<div class="kp-cimg${j?'':' on'}" style="background-image:url('${esc(p)}')"></div>`).join(''):`<div class="kp-cimg on kp-ce" style="background:${gr(u.id)}">${esc(u.avatar||'🙂')}</div>`}
  ${P.length>1?`<div class="kp-cdots">${P.map((_,j)=>`<i class="${j?'':'on'}"></i>`).join('')}</div>`:''}<div class="kp-cov"><h2>${esc(u.name)} <span>${u.age||''}</span>${u.verified?' <span class="kt-vb">✔</span>':''}</h2>
  ${d.job||d.company?`<div>💼 ${esc([d.job,d.company].filter(Boolean).join(' · '))}</div>`:''}${d.school?`<div>🏫 ${esc(d.school)}</div>`:''}${u.provinceName?`<div>📍 ${esc(u.provinceName)}${distTxt(u)?' · '+distTxt(u):''}</div>`:''}</div></div>

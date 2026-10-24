@@ -1,4 +1,4 @@
-const P=require('puppeteer-core');const B=process.env.BASE||'http://localhost:3000';const D='/workspace/fix-shots4/'+(process.env.TAG||'local')+'-';const sl=ms=>new Promise(r=>setTimeout(r,ms));
+const P=require('puppeteer-core');const B=process.env.BASE||'http://localhost:3000';const D='/workspace/fix-shots12/profile-'+(process.env.TAG||'local')+'-';const sl=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const br=await P.launch({executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});const errs=[];let f=0;const ok=(c,n)=>{if(!c)f++;console.log((c?'✅ ':'❌ ')+n)};
 const mk=async()=>{const pg=await (await br.createBrowserContext()).newPage();pg.on('pageerror',e=>errs.push(e.message));await pg.emulate({viewport:{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'});return pg};
 const login=async(pg,name,gender)=>{await pg.goto(B+'/?v='+Date.now(),{waitUntil:'networkidle2',timeout:90000});
@@ -10,7 +10,7 @@ const img=(pg,h)=>pg.evaluate(h=>{const c=document.createElement('canvas');c.wid
 const pb=await mk();await login(pb,'น้ำหวาน','f');for(const h of [0,120,220])await api(pb,'photos',{photo:await img(pb,h)});
 await api(pb,'profile/details',{bio:'ชอบคาเฟ่ ทะเล และแมวส้ม 🐱 หาเพื่อนไปเที่ยวทะเลด้วยกัน',goal:'แฟนระยะยาว',rel:'รักเดียวใจเดียว',interests:['คาเฟ่','ทะเล','ถ่ายรูป','K-pop'],langs:['ไทย','อังกฤษ'],zodiac:'ราศีพฤษภ',edu:'ปริญญาตรี',pets:'แมว',drink:'ดื่มตามโอกาส',smoke:'ไม่สูบ',exercise:'บ่อย',movies:['หลานม่า','ลาลาแลนด์'],series:'Queen of Tears',team:'ลิเวอร์พูล',music:'Bowkylion',prompts:[{q:'เดทแรกในฝันของฉันคือ…',a:'นั่งคาเฟ่ริมทะเลตอนพระอาทิตย์ตก 🌅'}],job:'กราฟิกดีไซเนอร์',social:'namwan.kt'});
 const bid=await pb.evaluate(()=>KT.me().id);
-const bad=await pb.evaluate(async()=>{const r=await fetch('/api/profile/details',{method:'POST',headers:{'content-type':'application/json','x-token':localStorage.kt_token||''},body:JSON.stringify({goal:'xxx'})});return r.status});ok(bad===400,'rejects bad enum');
+const bad=await pb.evaluate(async()=>{const r=await fetch('/api/profile/details',{method:'POST',headers:{'content-type':'application/json','x-token':localStorage.kt_token||''},body:JSON.stringify({diet:'xxx'})});return [r.status,(await r.json()).details?.diet??null]});ok(bad[0]===200&&bad[1]===null,'drops bad enum (no reject)');
 const pa=await mk();await login(pa,'ต้นเห็ด','m');
 for(const h of [30,300])await api(pa,'photos',{photo:await img(pa,h)});
 let m=await api(pa,'photos/order',{order:[1,0]});ok(m.photos.length===2&&m.avatar===m.photos[0],'reorder + main photo');

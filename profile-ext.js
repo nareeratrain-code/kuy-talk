@@ -34,6 +34,7 @@ module.exports=function(X){const {app,db,save,auth,me,clean,limited,isPrem}=X;db
   for(const [k,f] of Object.entries(F)){if(b[k]===undefined)continue;const v=b[k];
    if(f.multi){d[k]=[...new Set((Array.isArray(v)?v:[]).filter(x=>f.o.includes(x)))].slice(0,f.multi)}
    else{d[k]=v!==''&&v!=null&&f.o.includes(v)?v:null}}
+  if(b.hide!=null)d.hide=(Array.isArray(b.hide)?b.hide:[]).filter(k=>F[k]&&F[k].sens).slice(0,10);
   save();res.json(me(u))});
  // discovery settings
  app.post('/api/discovery',auth,(req,res)=>{const u=req.u,b=req.body||{},f=u.filters=u.filters||{},p=u.prefs=u.prefs||{};const n=(v,lo,hi)=>{v=parseInt(v);return v>=lo&&v<=hi?v:null};
@@ -45,7 +46,7 @@ module.exports=function(X){const {app,db,save,auth,me,clean,limited,isPrem}=X;db
   save();res.json(me(u))});
  return {delPic,IMG}};
 // helpers used by app.js
-module.exports.pubExt=u=>{const d=u.details||{};return{details:{job:d.job||'',company:d.company||'',school:d.school||'',series:d.series||'',team:d.team||'',music:d.music||'',games:d.games||'',social:d.social||'',height:d.height||null,movies:d.movies||[],prompts:d.prompts||[],...Object.fromEntries(Object.keys(F).map(k=>[k,d[k]||(F[k].multi?[]:null)]))}}};
+module.exports.pubExt=(u,self)=>{const d=u.details||{};return{details:{job:d.job||'',company:d.company||'',school:d.school||'',series:d.series||'',team:d.team||'',music:d.music||'',games:d.games||'',social:d.social||'',height:d.height||null,movies:d.movies||[],prompts:d.prompts||[],...(self?{hide:d.hide||[]}:{}),...Object.fromEntries(Object.keys(F).map(k=>[k,(!self&&F[k].sens&&(d.hide||[]).includes(k))?(F[k].multi?[]:null):(d[k]||(F[k].multi?[]:null))]))}}};
 // discovery visibility: hidden if discovery off, or incognito (unless they liked the viewer)
 module.exports.visibleTo=(db,viewer,x)=>{const p=x.prefs||{};if(p.discovery===false)return false;if(p.visibility==='incog'){return db.likes.some(l=>l.from===x.id&&l.to===viewer.id&&l.like)}return true};
 module.exports.extraPass=(u,x)=>{const f=u.filters||{};if(f.minPhotos&&(x.photos||[]).length<f.minPhotos)return false;if(f.hasBio&&!String(x.bio||'').trim())return false;return true};
