@@ -10,7 +10,13 @@ module.exports=function(X){const {app,db,save,auth,me,clean,limited,isPrem}=X;db
  // photo storage
  const putPic=(uid,d)=>{const k=crypto.randomBytes(10).toString('hex');db.pics[k]={uid,d,ts:Date.now()};return '/api/pic/'+k};
  const delPic=url=>{const m=/^\/api\/pic\/([a-f0-9]+)$/.exec(url||'');if(m)delete db.pics[m[1]]};
- app.get('/api/pic/:k',(req,res)=>{const p=db.pics[req.params.k];if(!p)return res.status(404).end();const m=/^data:(image\/\w+);base64,(.*)$/.exec(p.d);res.set('Cache-Control','public, max-age=31536000, immutable').type(m[1]).send(Buffer.from(m[2],'base64'))});
+ let sharp=null;try{sharp=require('sharp');sharp.cache(false);sharp.concurrency(1)}catch(e){console.warn('sharp unavailable, thumbnails disabled')}
+ const TC=new Map();let TCB=0;const TMAX=40e6,WS=new Set([200,400,800]);
+ app.get('/api/pic/:k',async(req,res)=>{const k=req.params.k,p=db.pics[k];if(!p)return res.status(404).end();const m=/^data:(image\/\w+);base64,(.*)$/.exec(p.d);if(!m)return res.status(404).end();
+  const w=+req.query.w,et='"'+k+(WS.has(w)?'-'+w:'')+'"';res.set({'Cache-Control':'public, max-age=31536000, immutable',ETag:et});if(req.headers['if-none-match']===et)return res.status(304).end();
+  let buf=Buffer.from(m[2],'base64'),type=m[1];
+  if(sharp&&WS.has(w)){const ck=k+':'+w;let t=TC.get(ck);if(!t){try{t=await sharp(buf).rotate().resize({width:w,height:Math.round(w*1.5),fit:'inside',withoutEnlargement:true}).jpeg({quality:72,mozjpeg:true}).toBuffer();TC.set(ck,t);TCB+=t.length;while(TCB>TMAX){const [fk,fv]=TC.entries().next().value;TC.delete(fk);TCB-=fv.length}}catch(e){t=null}}else{TC.delete(ck);TC.set(ck,t)}if(t){buf=t;type='image/jpeg'}}
+  res.type(type).send(buf)});
  // migrate legacy inline data-URL photos/avatars out of user docs (keeps user docs well under Firestore 1MB)
  setTimeout(()=>{let n=0;for(const u of Object.values(db.users)){if(Array.isArray(u.photos)&&u.photos.some(p=>/^data:/.test(p))){u.photos=u.photos.map(p=>/^data:/.test(p)?putPic(u.id,p):p);n++}if(/^data:/.test(u.avatar||'')){u.avatar=u.photos&&u.photos[0]||putPic(u.id,u.avatar);n++}}if(n){console.log('migrated photos for',n,'users');save()}},0);
  const syncAv=u=>{if(u.photos.length)u.avatar=u.photos[0];else if(/^(data:|\/api\/pic)/.test(u.avatar||''))u.avatar='🙂'};

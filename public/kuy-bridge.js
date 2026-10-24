@@ -1,5 +1,6 @@
 // Kuy Talk bridge v2: wires the original single-file UI to the real backend (REST + Socket.IO).
 (function(){
+window.TH=window.TH||((u,w)=>/^\/api\/pic\/[a-f0-9]+$/.test(u||'')?u+'?w='+w:u);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 let T=localStorage.kt_token,ME=null,sock=null,anonOn=false,anonPeer=null,CFG=null;
