@@ -17,6 +17,8 @@ const PX=require('./profile-ext');const store=require('./store'),GEO=require('./
 app.get('/healthz',(req,res)=>{const required=['1','true','yes','on'].includes(String(process.env.REQUIRE_PERSISTENT_DB||'').trim().toLowerCase());const persistent=['postgres','firestore'].includes(store.kind);if(required&&!persistent)return res.status(503).json({ok:false,storage:store.kind,error:'persistent database is not configured'});res.json({ok:true,storage:store.kind})});
 const id=()=>crypto.randomBytes(8).toString('hex');
 const FREE_SWIPES=100,DAY=864e5,PREMIUM_DAYS=30;
+// who-liked-me + visitors are free for everyone unless FREE_LIKES=0 (restores Premium gating)
+const FREE_LIKES=process.env.FREE_LIKES!=='0';
 const PRICES={premium:100,likesme:30,superlike:5,filter:10};
 const PACKS=[{id:'p1',coins:100,thb:35},{id:'p2',coins:300,thb:99},{id:'p3',coins:1000,thb:290}];
 const BOTS=[['มายด์',22,'f','ชอบคาเฟ่ แมว และดูซีรีส์ 🐱','🌸'],['ต้นกล้า',25,'m','สายเที่ยวภูเขา ⛰️ หาเพื่อนคุย','🏔️'],['แพรว',24,'f','นักร้องคาราโอเกะตัวยง 🎤','🎤'],['บอส',27,'m','โปรแกรมเมอร์ ชอบเล่นเกม 🎮','🎮'],['ใบเตย',23,'f','รักการทำอาหาร 🍜','🍜'],['เจ',26,'m','ฟิตเนส + กาแฟ ☕','💪'],['น้ำหวาน',21,'f','ชอบถ่ายรูป 📷','📷'],['กัปตัน',29,'m','นักบินฝึกหัด ✈️','✈️']];
@@ -204,16 +206,16 @@ app.post('/api/compliment',auth,(req,res)=>{const u=req.u,t=db.users[req.body.to
   if(t.bot)setTimeout(()=>{if(!db.messages[match.id])return;const r={id:id(),from:t.id,text:'ขอบคุณสำหรับคำชมนะ 🥰',ts:Date.now()};db.messages[match.id].push(r);save();io.to(u.id).emit('msg',{mid:match.id,...r})},1500)}
  io.to(t.id).emit('compliment',{from:pub(u),text});save();res.json({match:match&&{id:match.id,other:pub(t)},me:me(u)})});
 const blurOut=(x,extra)=>({blur:true,online:x.bot||isOnline(x.id),...extra});
-app.get('/api/likes/received',auth,(req,res)=>{const u=req.u,P=isPrem(u),mine=new Set(db.likes.filter(l=>l.from===u.id).map(l=>l.to));
+app.get('/api/likes/received',auth,(req,res)=>{const u=req.u,P=isPrem(u)||FREE_LIKES,mine=new Set(db.likes.filter(l=>l.from===u.id).map(l=>l.to));
  const L=db.likes.filter(l=>l.to===u.id&&l.like&&!mine.has(l.from)&&db.users[l.from]&&!db.users[l.from].banned&&!blocked(u.id,l.from)).sort((a,b)=>b.ts-a.ts);const seenAt=u.likesSeenAt||0;
  const list=L.map(l=>{const x=db.users[l.from],e={superlike:!!l.superlike,compliment:l.compliment?(P?l.compliment:true):null,isNew:l.ts>seenAt,ts:l.ts};return P?{...pub(x),...distOut(u,x),online:x.bot||isOnline(x.id),...e}:blurOut(x,e)});
- if(req.query.seen){u.likesSeenAt=Date.now();save()}res.json({premium:P,count:L.length,newCount:L.filter(l=>l.ts>seenAt).length,list})});
+ if(req.query.seen){u.likesSeenAt=Date.now();save()}res.json({premium:isPrem(u),unlocked:P,count:L.length,newCount:L.filter(l=>l.ts>seenAt).length,list})});
 app.get('/api/likes/given',auth,(req,res)=>{const u=req.u;res.json(db.likes.filter(l=>l.from===u.id&&l.like&&db.users[l.to]&&!matchOf(u.id,l.to)&&!blocked(u.id,l.to)).sort((a,b)=>b.ts-a.ts).map(l=>({...pub(db.users[l.to]),superlike:!!l.superlike,compliment:!!l.compliment,ts:l.ts})))});
 app.post('/api/visit',auth,(req,res)=>{const u=req.u,t=db.users[req.body.id];if(!t||t.id===u.id)return res.json({ok:false});const last=db.visits.filter(v=>v.by===u.id&&v.target===t.id).pop();
  if(!last||Date.now()-last.ts>5*60000){db.visits.push({by:u.id,target:t.id,ts:Date.now()});if(db.visits.length>20000)db.visits.splice(0,5000);io.to(t.id).emit('visit',{});save()}res.json({ok:true})});
-app.get('/api/visitors',auth,(req,res)=>{const u=req.u,P=isPrem(u),V=db.visits.filter(v=>v.target===u.id&&db.users[v.by]&&!blocked(u.id,v.by));const by={};for(const v of V){(by[v.by]=by[v.by]||{n:0,ts:0}).n++;by[v.by].ts=Math.max(by[v.by].ts,v.ts)}
+app.get('/api/visitors',auth,(req,res)=>{const u=req.u,P=isPrem(u)||FREE_LIKES,V=db.visits.filter(v=>v.target===u.id&&db.users[v.by]&&!blocked(u.id,v.by));const by={};for(const v of V){(by[v.by]=by[v.by]||{n:0,ts:0}).n++;by[v.by].ts=Math.max(by[v.by].ts,v.ts)}
  const ids=Object.keys(by).sort((a,b)=>by[b].ts-by[a].ts);const isF=x=>{const f=fr(u.id,x);return f&&f.status==='accepted'};
- res.json({premium:P,stats:{total:ids.length,visits:V.length,repeat:ids.filter(i=>by[i].n>1).length,friends:ids.filter(isF).length},list:ids.map(i=>{const x=db.users[i],e={count:by[i].n,ts:by[i].ts,friend:!!isF(i)};return P?{...pub(x),...e}:blurOut(x,e)})})});
+ res.json({premium:isPrem(u),unlocked:P,stats:{total:ids.length,visits:V.length,repeat:ids.filter(i=>by[i].n>1).length,friends:ids.filter(isF).length},list:ids.map(i=>{const x=db.users[i],e={count:by[i].n,ts:by[i].ts,friend:!!isF(i)};return P?{...pub(x),...e}:blurOut(x,e)})})});
 app.get('/api/me/stats',auth,(req,res)=>{const u=req.u.id;res.json({likesReceived:db.likes.filter(l=>l.to===u&&l.like).length,likesGiven:db.likes.filter(l=>l.from===u&&l.like).length,visitors:new Set(db.visits.filter(v=>v.target===u).map(v=>v.by)).size,
  picks:db.likes.filter(l=>l.to===u&&(l.superlike||l.compliment)).length,matches:db.matches.filter(m=>(m.a===u||m.b===u)&&m.b!==TEAM&&m.a!==TEAM).length})});
 app.post('/api/unmatch',auth,(req,res)=>{const u=req.u,m=db.matches.find(x=>x.id===req.body.mid);if(!m||(m.a!==u.id&&m.b!==u.id))return res.status(404).json({error:'ไม่พบ'});const o=m.a===u.id?m.b:m.a;if(o===TEAM)return res.status(400).json({error:'ยกเลิกแมตช์กับทีมงานไม่ได้'});
