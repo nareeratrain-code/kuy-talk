@@ -1,12 +1,12 @@
 // Rich profile: 9 photos (stored as separate docs in db.pics), bio/prompts/favourites/lifestyle, discovery settings
-const crypto=require('crypto');const {F,PROMPTS,MOVIES}=require('./profile-fields');
+const crypto=require('crypto');const {F,PROMPTS,MOVIES,TEXT_OPTIONS}=require('./profile-fields');
 const PQ=new Set(Object.values(PROMPTS).flat());
 const IMG=x=>typeof x==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(x)&&x.length<700000;
 const MAXP=9;
 module.exports=function(X){const {app,db,save,auth,me,clean,limited,isPrem}=X;db.pics=db.pics||{};
  const s=(v,n)=>typeof v==='string'?clean(v).slice(0,n):'';
  // client field defs
- app.get('/kt-fields.js',(req,res)=>{res.type('js').set('Cache-Control','no-cache').send('window.KTPF='+JSON.stringify({F,PROMPTS,MOVIES,MAXP}))});
+ app.get('/kt-fields.js',(req,res)=>{res.type('js').set('Cache-Control','no-cache').send('window.KTPF='+JSON.stringify({F,PROMPTS,MOVIES,TEXT_OPTIONS,MAXP}))});
  // photo storage
  const putPic=(uid,d)=>{const k=crypto.randomBytes(10).toString('hex');db.pics[k]={uid,d,ts:Date.now()};return '/api/pic/'+k};
  const delPic=url=>{const m=/^\/api\/pic\/([a-f0-9]+)$/.exec(url||'');if(m)delete db.pics[m[1]]};
