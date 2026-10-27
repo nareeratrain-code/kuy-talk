@@ -15,7 +15,7 @@ function build(){const es=require('esbuild');let html=fs.readFileSync(path.join(
  let body=html.slice(headEnd);
  // JS: inline scripts + local scripts (in order) -> one bundle placed after socket.io
  const J=[];body=body.replace(/<script>([\s\S]*?)<\/script>|<script src="\/([\w.-]+\.js)(?:\?v=\d+)?"><\/script>/g,(m,inl,f)=>{
-  if(inl!=null)J.push(inl);else if(f==='kt-fields.js'){const {F,PROMPTS,MOVIES}=require('./profile-fields');J.push('window.KTPF='+JSON.stringify({F,PROMPTS,MOVIES,MAXP:9})+';')}else J.push(fs.readFileSync(path.join(PUB,f),'utf8'));return ''});
+  if(inl!=null)J.push(inl);else if(f==='kt-fields.js'){const {F,PROMPTS,MOVIES,TEXT_OPTIONS}=require('./profile-fields');J.push('window.KTPF='+JSON.stringify({F,PROMPTS,MOVIES,TEXT_OPTIONS,MAXP:9})+';')}else J.push(fs.readFileSync(path.join(PUB,f),'utf8'));return ''});
  const B=J.map(s=>js(s)).join(';\n');const jn='app.'+hash(B)+'.js';out[jn]={type:'application/javascript',body:B};
  body=body.replace('<script src="/socket.io/socket.io.js"></script>',`<script src="/socket.io/socket.io.min.js"></script><script src="/b/${jn}"></script>`);
  if(!body.includes('/b/'+jn))throw new Error('socket.io tag not found');
