@@ -165,9 +165,7 @@ const _opd=window.openProfileDrawer;window.openProfileDrawer=function(id){if(id&
  const np=$('nav-profile'),nm=$('nav-moments');if(np&&nm){nm.after(np);np.innerHTML='<span style="font-size:18px">👤</span><span>โปรไฟล์</span>';np.setAttribute('onclick',"switchPage('me',this)")}
  window.koFilters=()=>{window.koClose&&koClose();koDiscovery()};
  const sp=window.switchPage;window.switchPage=function(n,nav){const r=sp.apply(this,arguments);if(n==='me'){const pg=$('pageMe');const add=()=>{if(!pg.querySelector('.kp-short')){const top=pg.querySelector('.ko-mecard');if(!top)return setTimeout(add,100);top.insertAdjacentHTML('afterend',`<div class="kp-short"><button onclick="koEdit()"><b>📷</b>รูป & ข้อมูล</button><button onclick="koSettings()"><b>⚙️</b>ตั้งค่า</button><button onclick="switchPage('friends',document.getElementById('nav-friends'))"><b>👥</b>เพื่อน</button><button onclick="switchPage('sub',document.getElementById('nav-sub'))"><b>👑</b>Premium</button></div>`);const av=top.querySelector('.ko-ring');if(av){av.style.cursor='pointer';av.onclick=()=>koEdit()}}};add()}return r};
- if('serviceWorker' in navigator)navigator.serviceWorker.getRegistrations().then(R=>R.forEach(r=>r.unregister())).catch(()=>{});
- if(window.caches)caches.keys().then(K=>K.forEach(k=>caches.delete(k))).catch(()=>{});
-})();
+	})();
 // nav order: ใกล้ | ปัดการ์ด | ไลก์ | แชท | ห้องจังหวัด | โมเมนต์ | โปรไฟล์ ; nearby top toggle
 (function(){const $=id=>document.getElementById(id);const nn=$('nav-nearby'),nd=$('nav-deck');if(nn&&nd){nd.before(nn);const l=nn.querySelector('span:last-child');if(l)l.textContent='ใกล้'}
  for(const pid of ['pageNearby','panelNearby']){const pn=$(pid);if(pn&&!pn.querySelector('.kt-nbtop'))pn.insertAdjacentHTML('afterbegin',`<div class="kt-nbtop"><div class="ko-tabs"><button class="on">ใกล้เคียง</button><button onclick="switchPage('deck',document.getElementById('nav-deck'))">ปัดการ์ด</button></div></div>`)}

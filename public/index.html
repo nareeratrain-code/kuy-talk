@@ -5385,16 +5385,12 @@ setTimeout(updateAdminBadges, 500);
 // PWA — Service Worker + Install Prompt
 // ═══════════════════════════════════════════════════════════
 
-// Register Service Worker via blob (works offline, no server needed)
-if (false && 'serviceWorker' in navigator) {
-  const swCode = atob('Ci8vIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAovLyBTZXJ2aWNlIFdvcmtlciAoaW5saW5lIOKAlCByZWdpc3RlcmVkIGZyb20gSFRNTCkKLy8g4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCmNvbnN0IFNXX0NBQ0hFID0gJ2t1eXRhbGstdjEnOwpjb25zdCBTV19BU1NFVFMgPSBbXTsgLy8gc2luZ2xlLWZpbGUgYXBwIOKAlCBubyBleHRlcm5hbCBhc3NldHMgdG8gY2FjaGUKCnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignaW5zdGFsbCcsIGUgPT4gewogIGNvbnNvbGUubG9nKCdbU1ddIEluc3RhbGxlZCBLdXlUYWxrIHYxJyk7CiAgc2VsZi5za2lwV2FpdGluZygpOwp9KTsKCnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignYWN0aXZhdGUnLCBlID0+IHsKICBjb25zb2xlLmxvZygnW1NXXSBBY3RpdmF0ZWQnKTsKICBlLndhaXRVbnRpbCgKICAgIGNhY2hlcy5rZXlzKCkudGhlbihrZXlzID0+CiAgICAgIFByb21pc2UuYWxsKGtleXMuZmlsdGVyKGsgPT4gayAhPT0gU1dfQ0FDSEUpLm1hcChrID0+IGNhY2hlcy5kZWxldGUoaykpKQogICAgKQogICk7CiAgc2VsZi5jbGllbnRzLmNsYWltKCk7Cn0pOwoKc2VsZi5hZGRFdmVudExpc3RlbmVyKCdmZXRjaCcsIGUgPT4gewogIC8vIEZvciBuYXZpZ2F0aW9uIHJlcXVlc3RzLCBzZXJ2ZSBmcm9tIGNhY2hlIG9yIG5ldHdvcmsKICBpZiAoZS5yZXF1ZXN0Lm1vZGUgPT09ICduYXZpZ2F0ZScpIHsKICAgIGUucmVzcG9uZFdpdGgoCiAgICAgIGZldGNoKGUucmVxdWVzdCkuY2F0Y2goKCkgPT4KICAgICAgICBjYWNoZXMubWF0Y2goZS5yZXF1ZXN0KS50aGVuKHIgPT4gciB8fCBmZXRjaChlLnJlcXVlc3QpKQogICAgICApCiAgICApOwogICAgcmV0dXJuOwogIH0KICBlLnJlc3BvbmRXaXRoKAogICAgY2FjaGVzLm1hdGNoKGUucmVxdWVzdCkudGhlbihjYWNoZWQgPT4gY2FjaGVkIHx8IGZldGNoKGUucmVxdWVzdCkpCiAgKTsKfSk7CgovLyBQdXNoIG5vdGlmaWNhdGlvbiBoYW5kbGVyCnNlbGYuYWRkRXZlbnRMaXN0ZW5lcigncHVzaCcsIGUgPT4gewogIGNvbnN0IGRhdGEgPSBlLmRhdGEgPyBlLmRhdGEuanNvbigpIDoge307CiAgY29uc3QgdGl0bGUgPSBkYXRhLnRpdGxlIHx8ICdLdXlUYWxrJzsKICBjb25zdCBvcHRpb25zID0gewogICAgYm9keTogZGF0YS5ib2R5IHx8ICfguITguLjguJPguKHguLXguIHguLLguKPguYHguIjguYnguIfguYDguJXguLfguK3guJnguYPguKvguKHguYgnLAogICAgaWNvbjogZGF0YS5pY29uIHx8ICcnLAogICAgYmFkZ2U6IGRhdGEuYmFkZ2UgfHwgJycsCiAgICB2aWJyYXRlOiBbMjAwLCAxMDAsIDIwMF0sCiAgICBkYXRhOiBkYXRhLnVybCB8fCAnLycsCiAgICBhY3Rpb25zOiBbCiAgICAgIHsgYWN0aW9uOiAnb3BlbicsICAgIHRpdGxlOiAn4LmA4Lib4Li04LiU4LmB4Lit4LibJyB9LAogICAgICB7IGFjdGlvbjogJ2Rpc21pc3MnLCB0aXRsZTogJ+C4m+C4tOC4lCcgfQogICAgXQogIH07CiAgZS53YWl0VW50aWwoc2VsZi5yZWdpc3RyYXRpb24uc2hvd05vdGlmaWNhdGlvbih0aXRsZSwgb3B0aW9ucykpOwp9KTsKCnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignbm90aWZpY2F0aW9uY2xpY2snLCBlID0+IHsKICBlLm5vdGlmaWNhdGlvbi5jbG9zZSgpOwogIGlmIChlLmFjdGlvbiAhPT0gJ2Rpc21pc3MnKSB7CiAgICBlLndhaXRVbnRpbChjbGllbnRzLm9wZW5XaW5kb3coZS5ub3RpZmljYXRpb24uZGF0YSB8fCAnLycpKTsKICB9Cn0pOwo=');
-  const blob = new Blob([swCode], {type: 'text/javascript'});
-  const swURL = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swURL, {scope: './'}
-  ).then(reg => {
+// Register the real Service Worker. It uses network-first for HTML/JS/CSS
+// so a new deployment is not trapped behind stale mobile cache.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js?v=202610271220', {scope: '/'}).then(reg => {
     console.log('[Kuy Talk PWA] Service Worker registered:', reg.scope);
-    // Check for updates every 60s
-    setInterval(() => reg.update(), 60000);
+    reg.update().catch(() => {});
   }).catch(err => console.warn('[Kuy Talk PWA] SW failed:', err));
 }
 
