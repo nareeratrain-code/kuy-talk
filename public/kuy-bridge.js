@@ -44,11 +44,15 @@ function openChatUid(uid){const mid=midOf(uid);if(mid){openChat(mid);switchPage(
 window.ktOpenChatUid=openChatUid;
 async function loadAll(){await Promise.all([loadChats(),loadPeople(),loadMoments(),loadFriends(),loadBlocks()])}
 // ---------- socket ----------
+let ktAudio=null;
+function unlockAudio(){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!ktAudio)ktAudio=new AC();if(ktAudio.state==='suspended')ktAudio.resume().catch(()=>{})}catch(e){}}
+function notifyMessageSound(){try{const p=(ME&&ME.prefs)||{};if(p.notif===false||p.notifMsg===false)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!ktAudio)ktAudio=new AC();if(ktAudio.state==='suspended'){ktAudio.resume().catch(()=>{});return}const now=ktAudio.currentTime;const gain=ktAudio.createGain();gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(0.12,now+0.015);gain.gain.exponentialRampToValueAtTime(0.0001,now+0.28);gain.connect(ktAudio.destination);const osc=ktAudio.createOscillator();osc.type='sine';osc.frequency.setValueAtTime(880,now);osc.frequency.exponentialRampToValueAtTime(660,now+0.18);osc.connect(gain);osc.start(now);osc.stop(now+0.3);if(navigator.vibrate)navigator.vibrate(35)}catch(e){}}
+['pointerdown','touchstart','keydown'].forEach(e=>document.addEventListener(e,unlockAudio,{passive:true}));
 function connect(){sock=io({auth:{token:T}});KTCall.init(sock);dispatchEvent(new CustomEvent('kt:sock',{detail:sock}));
  sock.on('connect',()=>{if(currentRoom)sock.emit('room:join',currentRoom)});
  sock.on('msg',m=>{const c=chats[m.mid];if(!c){loadChats();return}if(m.from===ME.id){if(m.type){c.msgs.push({from:'me',text:fmtM(m),raw:m.text,id:m.id,ts:m.ts,time:tm(m.ts)});c.preview=pv(m.text)}else{const pend=c.msgs.filter(x=>x.from==='me'&&!x.id).pop();if(pend)pend.id=m.id}if(currentChat===m.mid)renderMessages();buildChatList();return}$('typingRow')?.remove();
   c.msgs.push({from:'them',text:fmtM(m),raw:m.text,id:m.id,ts:m.ts,time:tm(m.ts)});c.preview=pv(m.text);if(currentChat===m.mid&&!document.hidden)sock.emit('read',{mid:m.mid});c.time=tm(m.ts);
-  if(currentChat===m.mid)renderMessages();else{c.unread++;showToast('💬 ข้อความใหม่จาก '+c.name)}buildChatList();$('ci-'+currentChat)?.classList.add('active')});
+  if(currentChat===m.mid)renderMessages();else{c.unread++;notifyMessageSound();showToast('💬 ข้อความใหม่จาก '+c.name)}buildChatList();$('ci-'+currentChat)?.classList.add('active')});
  sock.on('typing',({mid})=>{if(currentChat!==mid||$('typingRow'))return;const c=chats[mid],box=$('cwMessages');const t=document.createElement('div');t.className='msg-row fade-in';t.id='typingRow';t.innerHTML=`<div class="msg-avatar-sm" style="background:${c.grad}">${c.avatar}</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;box.appendChild(t);box.scrollTop=1e9;setTimeout(()=>t.remove(),4000)});
  sock.on('match',async m=>{await loadChats();loadPeople();showToast('🎉 แมตช์ใหม่กับ '+esc(m.other.name)+'!')});
  sock.on('friend',d=>{loadFriends();showToast(d.status==='pending'?`👋 ${esc(d.from.name)} ขอเป็นเพื่อน`:d.status==='accepted'?`🤝 ${esc(d.from.name)} เป็นเพื่อนกับคุณแล้ว`:'คำขอถูกปฏิเสธ')});
@@ -195,4 +199,3 @@ window.KT={setToken:t=>{T=localStorage.kt_token=t},fmtM,pv,api,me:()=>ME,setMe:m
 })();
 // fix: the shell's click-outside handler closed the drawer in the same click that opened it
 (function(){const f=window.openProfileDrawer;window.openProfileDrawer=function(id){setTimeout(()=>f(id),0)}})();
-
