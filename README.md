@@ -42,6 +42,26 @@ This repository sets `REQUIRE_PERSISTENT_DB=true` in `render.yaml`. Production w
 
 The app uses `pg` with a small connection pool, creates its tables and geo index at startup, and stores users in `kt_users` and shared collections/messages in `kt_kv`. Do not put a database password in Git, `render.yaml`, screenshots, or chat messages.
 
+### Web Push / VAPID
+
+The server uses `web-push` and creates the PostgreSQL table `push_subscriptions` automatically at startup. The table stores one subscription endpoint per browser/device, scoped to the authenticated user. It is not part of the JSON application store.
+
+Generate a key pair locally (keep the private key secret):
+
+```bash
+node -e "console.log(require('web-push').generateVAPIDKeys())"
+```
+
+Set these variables in Render **Web Service → Environment** (not in GitHub):
+
+| Env var | Value |
+|---|---|
+| `VAPID_SUBJECT` | `mailto:your-email@example.com` |
+| `VAPID_PUBLIC_KEY` | the generated public key |
+| `VAPID_PRIVATE_KEY` | the generated private key; never expose it |
+
+After redeploying, the browser can call `/api/push/config`, request notification permission, subscribe with the public key, and save the subscription through `POST /api/push/subscribe`. `GET /api/push/status` reports the current user's subscription count; `DELETE /api/push/subscribe` removes one endpoint. The private VAPID key is used only by the server.
+
 **Phone OTP** – `/api/otp/request` + `/api/otp/verify`: Thai mobile (+66/0, 6/8/9 prefix), 6-digit code (HMAC-hashed), 5 min expiry, 60 s resend cooldown, 5 sends/hour/phone, 10/hour/IP, 5 wrong tries, 30 verifies/10 min/IP. Sessions = random 32-byte tokens stored hashed, in an HttpOnly `kt_s` cookie (180 days) + `x-token` header. Logged-in users can link a phone. With no SMS provider configured the code is shown on screen labelled **โหมดทดสอบ**.
 
 | Env var | Purpose |

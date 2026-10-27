@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'kuy-talk-v20261027-1';
+const CACHE_VERSION = 'kuy-talk-v20261027-2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 self.addEventListener('install', event => {
@@ -19,6 +19,29 @@ self.addEventListener('message', event => {
       caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))))
     );
   }
+});
+
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) { data = {body: event.data ? event.data.text() : ''}; }
+  const title = data.title || 'Kuy Talk';
+  const options = {
+    body: data.body || 'มีการแจ้งเตือนใหม่',
+    icon: data.icon || '/brand/icon-192.png',
+    badge: data.badge || '/brand/icon-192.png',
+    tag: data.tag || 'kuy-talk-notification',
+    data: {url: data.url || '/'}
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  event.waitUntil(clients.matchAll({type: 'window', includeUncontrolled: true}).then(list => {
+    const existing = list.find(c => c.url.startsWith(self.location.origin));
+    return existing ? existing.focus() : clients.openWindow(target);
+  }));
 });
 
 self.addEventListener('fetch', event => {

@@ -14,12 +14,27 @@ async function init(){const URL=process.env.DATABASE_URL;let KIND=(process.env.S
   const pool=S.pool=new Pool({connectionString:URL,ssl,max:5});
   await pool.query(`create table if not exists kt_users(id text primary key,data jsonb not null,lat double precision,lng double precision,updated timestamptz default now());
    create index if not exists kt_users_latlng on kt_users(lat,lng);
-   create table if not exists kt_kv(k text primary key,v jsonb not null,updated timestamptz default now());`);
+   create table if not exists kt_kv(k text primary key,v jsonb not null,updated timestamptz default now());
+   create table if not exists push_subscriptions(
+    id bigserial primary key,
+    user_id text not null,
+    endpoint text not null unique,
+    p256dh text not null,
+    auth text not null,
+    user_agent text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+   );
+   create index if not exists push_subscriptions_user_idx on push_subscriptions(user_id);`);
   const db=JSON.parse(JSON.stringify(blank));const last=new Map();
   for(const r of (await pool.query('select id,data from kt_users')).rows){db.users[r.id]=r.data;last.set('u:'+r.id,h(JSON.stringify(r.data)))}
   for(const r of (await pool.query('select k,v from kt_kv')).rows){if(r.k.startsWith('m:'))db.messages[r.k.slice(2)]=r.v;else db[r.k]=r.v;last.set(r.k,h(JSON.stringify(r.v)))}
   for(const k in blank)if(db[k]==null)db[k]=JSON.parse(JSON.stringify(blank[k]));
-  S.db=db;S.kind='postgres';let t=null,busy=false,again=false;
+  S.db=db;S.kind='postgres';S.push={
+   upsert:async(userId,sub,userAgent)=>pool.query(`insert into push_subscriptions(user_id,endpoint,p256dh,auth,user_agent,updated_at) values($1,$2,$3,$4,$5,now()) on conflict(endpoint) do update set user_id=$1,p256dh=$3,auth=$4,user_agent=$5,updated_at=now()`,[userId,sub.endpoint,sub.keys.p256dh,sub.keys.auth,String(userAgent||'').slice(0,300)]),
+   remove:async(userId,endpoint)=>pool.query('delete from push_subscriptions where user_id=$1 and endpoint=$2',[userId,endpoint]),
+   count:async(userId)=>{const r=await pool.query('select count(*)::int as n from push_subscriptions where user_id=$1',[userId]);return r.rows[0].n}
+  };let t=null,busy=false,again=false;
   const flush=async()=>{if(busy){again=true;return}busy=true;try{const seen=new Set(),q=[];
    for(const [id,u] of Object.entries(db.users)){const k='u:'+id,s=JSON.stringify(u),hs=h(s);seen.add(k);if(last.get(k)!==hs){last.set(k,hs);const g=u.geo&&!u.geo.paused?u.geo:null;q.push(['insert into kt_users(id,data,lat,lng,updated) values($1,$2,$3,$4,now()) on conflict(id) do update set data=$2,lat=$3,lng=$4,updated=now()',[id,s,g?g.lat:null,g?g.lng:null]])}}
    const kv=(k,v)=>{const s=JSON.stringify(v),hs=h(s);seen.add(k);if(last.get(k)!==hs){last.set(k,hs);q.push(['insert into kt_kv(k,v,updated) values($1,$2,now()) on conflict(k) do update set v=$2,updated=now()',[k,s]])}};

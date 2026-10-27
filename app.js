@@ -13,7 +13,8 @@ app.get(['/admin','/admin.html'],adminAuth,(req,res)=>res.sendFile(path.join(__d
 require('./build')(app);
 app.use(express.static(path.join(__dirname,'public'),{setHeaders:(res,f)=>{res.setHeader('Cache-Control',/[?&]v=\w/.test(res.req.originalUrl||'')&&/\.(js|css)$/.test(f)?'public, max-age=31536000, immutable':/\.(html|js|css|webmanifest)$/.test(f)?'no-cache':'public, max-age=604800')}}));
 // --- db ---
-const PX=require('./profile-ext');const store=require('./store'),GEO=require('./geo'),SMS=require('./sms');const db=store.db,save=store.save;
+const PX=require('./profile-ext');const store=require('./store'),GEO=require('./geo'),SMS=require('./sms'),PUSH=require('./push');const db=store.db,save=store.save;
+let PUSH_READY=false;try{PUSH_READY=PUSH.configure()}catch(e){console.error('VAPID configuration failed:',e.message)}
 app.get('/healthz',(req,res)=>{const required=['1','true','yes','on'].includes(String(process.env.REQUIRE_PERSISTENT_DB||'').trim().toLowerCase());const persistent=['postgres','firestore'].includes(store.kind);if(required&&!persistent)return res.status(503).json({ok:false,storage:store.kind,error:'persistent database is not configured'});res.json({ok:true,storage:store.kind})});
 const id=()=>crypto.randomBytes(8).toString('hex');
 const FREE_SWIPES=100,DAY=864e5,PREMIUM_DAYS=30;
@@ -74,6 +75,11 @@ function renewSession(req,res){const t=tokOf(req);if(!t)return;const s=db.sessio
  s.exp=Date.now()+SESSION_DAYS*DAY;if(!req.headers['x-token']||cookieOf(req.headers.cookie,'kt_s')===t)res.append('Set-Cookie',`kt_s=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS*86400}${req.secure||req.headers['x-forwarded-proto']==='https'?'; Secure':''}`);save()}
 function auth(req,res,next){const u=userOfTok(tokOf(req));if(!u||u.bot)return res.status(401).json({error:'กรุณาสมัครก่อน'});if(u.banned)return res.status(403).json({error:'บัญชีนี้ถูกระงับ'});
  if(u.swipeDate!==today()){u.swipeDate=today();u.swipes=0;save()}if(!u.teamOk){u.teamOk=1;teamWelcome(u);save()}req.u=u;renewSession(req,res);next()}
+// Web Push: the public VAPID key is safe for the browser; private key never leaves the server.
+app.get('/api/push/config',(req,res)=>res.json({enabled:!!(PUSH_READY&&store.push),publicKey:PUSH_READY?PUSH.publicKey():null}));
+app.get('/api/push/status',auth,async(req,res)=>{if(!store.push)return res.json({enabled:false,count:0});try{res.json({enabled:PUSH_READY,count:await store.push.count(req.u.id)})}catch(e){res.status(503).json({error:'ฐานข้อมูล Push ไม่พร้อม'})}});
+app.post('/api/push/subscribe',auth,async(req,res)=>{if(!PUSH_READY||!store.push)return res.status(503).json({error:'Web Push ยังไม่ได้ตั้งค่า VAPID บนเซิร์ฟเวอร์'});const s=req.body||{};if(typeof s.endpoint!=='string'||s.endpoint.length<20||s.endpoint.length>2048||!/^https:\/\//.test(s.endpoint)||!s.keys||typeof s.keys.p256dh!=='string'||typeof s.keys.auth!=='string'||s.keys.p256dh.length>300||s.keys.auth.length>300)return res.status(400).json({error:'รูปแบบ Push Subscription ไม่ถูกต้อง'});try{await store.push.upsert(req.u.id,{endpoint:s.endpoint,keys:{p256dh:s.keys.p256dh,auth:s.keys.auth}},req.get('user-agent'));res.json({ok:true})}catch(e){console.error('push subscription save failed:',e.message);res.status(503).json({error:'บันทึก Push Subscription ไม่สำเร็จ'})}});
+app.delete('/api/push/subscribe',auth,async(req,res)=>{if(!store.push)return res.json({ok:true});const endpoint=req.body&&req.body.endpoint;if(typeof endpoint!=='string'||endpoint.length<20||endpoint.length>2048)return res.status(400).json({error:'endpoint ไม่ถูกต้อง'});try{await store.push.remove(req.u.id,endpoint);res.json({ok:true})}catch(e){res.status(503).json({error:'ลบ Push Subscription ไม่สำเร็จ'})}});
 const matchOf=(a,b)=>db.matches.find(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
 function makeMatch(a,b){let m=matchOf(a,b);if(m)return m;m={id:id(),a,b,ts:Date.now()};db.matches.push(m);io.to(b).emit('match',{id:m.id,other:pub(db.users[a])});io.to(a).emit('match',{id:m.id,other:pub(db.users[b])});save();return m}
 const others=u=>Object.values(db.users).filter(x=>x.id!==u.id&&!x.banned&&!x.official&&!blocked(u.id,x.id));

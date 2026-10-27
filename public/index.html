@@ -5388,7 +5388,7 @@ setTimeout(updateAdminBadges, 500);
 // Register the real Service Worker. It uses network-first for HTML/JS/CSS
 // so a new deployment is not trapped behind stale mobile cache.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js?v=202610271220', {scope: '/'}).then(reg => {
+  navigator.serviceWorker.register('/sw.js?v=202610271302', {scope: '/'}).then(reg => {
     console.log('[Kuy Talk PWA] Service Worker registered:', reg.scope);
     reg.update().catch(() => {});
   }).catch(err => console.warn('[Kuy Talk PWA] SW failed:', err));
